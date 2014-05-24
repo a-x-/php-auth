@@ -1,4 +1,6 @@
 <?php
+require_once("$_SERVER[DOCUMENT_ROOT]/vendor/a-x-/invntrm-common-php/common.php");
+require_once("$_SERVER[DOCUMENT_ROOT]/_data/consts.php");
 
 /**
  * Configuration for: Database Connection
@@ -13,17 +15,17 @@
  *          by the way, it's bad style to use "root", but for development it will work.
  * DB_PASS: the password of the above user
  */
-define("DB_HOST", "127.0.0.1");
-define("DB_NAME", "login");
+define("DB_HOST", "localhost");
+define("DB_NAME", "man");
 define("DB_USER", "root");
-define("DB_PASS", "mysql");
+define("DB_PASS", "qwewe@$@#eweefsfdsFSDFS");
 
 /**
  * Configuration for: Cookies
  * Please note: The COOKIE_DOMAIN needs the domain where your app is,
  * in a format like this: .mydomain.com
  * Note the . in front of the domain. No www, no http, no slash here!
- * For local development, use false because .127.0.0.1 or .localhost don't work inside Chrome 
+ * For local development, use false because .127.0.0.1 or .localhost don't work inside Chrome
  * but when deploying you should change this to your real domain, like '.mydomain.com' !
  * The leading dot makes the cookie available for sub-domains too.
  * @see http://stackoverflow.com/q/9618217/1114320
@@ -35,8 +37,8 @@ define("DB_PASS", "mysql");
  * COOKIE_SECRET_KEY: Put a random value here to make your app more secure. When changed, all cookies are reset.
  */
 define("COOKIE_RUNTIME", 1209600);
-define("COOKIE_DOMAIN", false); // to be replaced by '.mydomain.com'
-define("COOKIE_SECRET_KEY", "1gp@TMPS{+$78sfpMJFe-92s");
+define("COOKIE_DOMAIN", ".".$_SERVER['SERVER_NAME']);
+define("COOKIE_SECRET_KEY", "___1gp@#32PS{+$78sfSDFrtre-*766pMJFe-92s");
 
 /**
  * Configuration for: Email server credentials
@@ -62,29 +64,33 @@ define("COOKIE_SECRET_KEY", "1gp@TMPS{+$78sfpMJFe-92s");
  * It's really recommended to use SMTP!
  *
  */
-define("EMAIL_USE_SMTP", false);
-define("EMAIL_SMTP_HOST", "yourhost");
+define("EMAIL_USE_SMTP", true);
+define("EMAIL_SMTP_HOST", "smtp.damina.org");
 define("EMAIL_SMTP_AUTH", true);
-define("EMAIL_SMTP_USERNAME", "yourusername");
-define("EMAIL_SMTP_PASSWORD", "yourpassword");
+define("EMAIL_SMTP_USERNAME", "feedback@damina.org");
+define("EMAIL_SMTP_PASSWORD", "iYhljOnZlnnncjv70kw2");
 define("EMAIL_SMTP_PORT", 465);
 define("EMAIL_SMTP_ENCRYPTION", "ssl");
 
 /**
  * Configuration for: password reset email data
  */
-define("EMAIL_PASSWORDRESET_FROM", "no-reply@example.com");
-define("EMAIL_PASSWORDRESET_FROM_NAME", "My Project");
-define("EMAIL_PASSWORDRESET_SUBJECT", "Password reset for PROJECT XY");
-define("EMAIL_PASSWORDRESET_CONTENT", "Please click on this link to reset your password:");
+define("EMAIL_PASSWORDRESET_URL", "http://$_SERVER[SERVER_NAME]/profile/reset/");
+define("EMAIL_PASSWORDRESET_FROM", "8888@$_SERVER[SERVER_NAME]");
+define("EMAIL_PASSWORDRESET_FROM_NAME", PROJECT_NAME);
+define("EMAIL_PASSWORDRESET_SUBJECT", "Сброс пароля — ".PROJECT_NAME);
+define("EMAIL_PASSWORDRESET_CONTENT", "<h2>Пожалуйста кликните на ссылку ниже для сброса пароля</h2>
+    <h3>Если вы не понимате, что происходит, ответьте, пожалуйста, нам на это письмо</h3>");
 
 /**
  * Configuration for: verification email data
  */
-define("EMAIL_VERIFICATION_FROM", "no-reply@example.com");
-define("EMAIL_VERIFICATION_FROM_NAME", "My Project");
-define("EMAIL_VERIFICATION_SUBJECT", "Account activation for PROJECT XY");
-define("EMAIL_VERIFICATION_CONTENT", "Please click on this link to activate your account:");
+define("EMAIL_VERIFICATION_URL", "http://$_SERVER[SERVER_NAME]/profile/verification/");
+define("EMAIL_VERIFICATION_FROM", "8888@$_SERVER[SERVER_NAME]");
+define("EMAIL_VERIFICATION_FROM_NAME", PROJECT_NAME);
+define("EMAIL_VERIFICATION_SUBJECT", "Подтверждение — ".PROJECT_NAME);
+define("EMAIL_VERIFICATION_CONTENT", "<h2>Пожалуйста кликните на ссылку ниже для подтверждения</h2>
+    <h3>Если вы не понимате, что происходит, ответьте, пожалуйста, нам на это письмо</h3>");
 
 /**
  * Configuration for: Hashing strength
