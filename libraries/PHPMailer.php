@@ -682,7 +682,7 @@ class PHPMailer
     public function isSendmail()
     {
         $ini_sendmail_path = ini_get('sendmail_path');
-        
+
         if (!stristr($ini_sendmail_path, 'sendmail')) {
             $this->Sendmail = '/usr/sbin/sendmail';
         } else {
@@ -698,7 +698,7 @@ class PHPMailer
     public function isQmail()
     {
         $ini_sendmail_path = ini_get('sendmail_path');
-        
+
         if (!stristr($ini_sendmail_path, 'qmail')) {
             $this->Sendmail = '/var/qmail/bin/qmail-inject';
         } else {
@@ -773,16 +773,7 @@ class PHPMailer
             }
             return false;
         }
-        $address = trim($address);
-        $name = trim(preg_replace('/[\r\n]+/', '', $name)); //Strip breaks and trim
-        if (!$this->validateAddress($address)) {
-            $this->setError($this->lang('invalid_address') . ': ' . $address);
-            $this->edebug($this->lang('invalid_address') . ': ' . $address);
-            if ($this->exceptions) {
-                throw new phpmailerException($this->lang('invalid_address') . ': ' . $address);
-            }
-            return false;
-        }
+        if(!$this->_processCheckAddressName($address,$name)) return false;
         if ($kind != 'Reply-To') {
             if (!isset($this->all_recipients[strtolower($address)])) {
                 array_push($this->$kind, array($address, $name));
@@ -798,16 +789,7 @@ class PHPMailer
         return false;
     }
 
-    /**
-     * Set the From and FromName properties.
-     * @param string $address
-     * @param string $name
-     * @param bool $auto Whether to also set the Sender address, defaults to true
-     * @throws phpmailerException
-     * @return bool
-     */
-    public function setFrom($address, $name = '', $auto = true)
-    {
+    private function _processCheckAddressName (&$address,&$name) {
         $address = trim($address);
         $name = trim(preg_replace('/[\r\n]+/', '', $name)); //Strip breaks and trim
         if (!$this->validateAddress($address)) {
@@ -818,6 +800,20 @@ class PHPMailer
             }
             return false;
         }
+        return true;
+    }
+
+    /**
+     * Set the From and FromName properties.
+     * @param string $address
+     * @param string $name
+     * @param bool $auto Whether to also set the Sender address, defaults to true
+     * @throws phpmailerException
+     * @return bool
+     */
+    public function setFrom($address, $name = '', $auto = true)
+    {
+        if(!$this->_processCheckAddressName($address,$name)) return false;
         $this->From = $address;
         $this->FromName = $name;
         if ($auto) {
@@ -1044,7 +1040,7 @@ class PHPMailer
                     if (method_exists($this, $sendMethod)) {
                         return $this->$sendMethod($this->MIMEHeader, $this->MIMEBody);
                     }
-                    
+
                     return $this->mailSend($this->MIMEHeader, $this->MIMEBody);
             }
         } catch (phpmailerException $exc) {
@@ -1176,6 +1172,16 @@ class PHPMailer
         return $this->smtp;
     }
 
+    private function  _attemptToSendToRecipient($entity) {
+        if (!$this->smtp->recipient($$entity[0])) {
+            $bad_rcpt[] = $$entity[0];
+            $isSent = 0;
+        } else {
+            $isSent = 1;
+        }
+        return $isSent;
+    }
+
     /**
      * Send mail via SMTP.
      * Returns false if there is a bad MAIL FROM, RCPT, or DATA input.
@@ -1203,30 +1209,15 @@ class PHPMailer
 
         // Attempt to send to all recipients
         foreach ($this->to as $to) {
-            if (!$this->smtp->recipient($to[0])) {
-                $bad_rcpt[] = $to[0];
-                $isSent = 0;
-            } else {
-                $isSent = 1;
-            }
+            $isSent = $this->_attemptToSendToRecipient('to');
             $this->doCallback($isSent, $to[0], '', '', $this->Subject, $body, $this->From);
         }
         foreach ($this->cc as $cc) {
-            if (!$this->smtp->recipient($cc[0])) {
-                $bad_rcpt[] = $cc[0];
-                $isSent = 0;
-            } else {
-                $isSent = 1;
-            }
+            $isSent = $this->_attemptToSendToRecipient('cc');
             $this->doCallback($isSent, '', $cc[0], '', $this->Subject, $body, $this->From);
         }
         foreach ($this->bcc as $bcc) {
-            if (!$this->smtp->recipient($bcc[0])) {
-                $bad_rcpt[] = $bcc[0];
-                $isSent = 0;
-            } else {
-                $isSent = 1;
-            }
+            $isSent = $this->_attemptToSendToRecipient('bcc');
             $this->doCallback($isSent, '', '', $bcc[0], $this->Subject, $body, $this->From);
         }
 
@@ -1484,6 +1475,19 @@ class PHPMailer
             $message = substr($message, 0, -$lelen);
         }
 
+        $getPartWord  = function($from) use ($is_utf8,&$word,&$part,&$len){
+            $len = $from;//$space_left;
+            if ($is_utf8) {
+                $len = $this->utf8CharBoundary($word, $len);
+            } elseif (substr($word, $len - 1, 1) == '=') {
+                $len--;
+            } elseif (substr($word, $len - 2, 1) == '=') {
+                $len -= 2;
+            }
+            $part = substr($word, 0, $len);
+            $word = substr($word, $len);
+        };
+
         $line = explode($this->LE, $message); // Magic. We know fixEOL uses $LE
         $message = '';
         for ($i = 0; $i < count($line); $i++) {
@@ -1495,16 +1499,7 @@ class PHPMailer
                     $space_left = $length - strlen($buf) - $crlflen;
                     if ($e != 0) {
                         if ($space_left > 20) {
-                            $len = $space_left;
-                            if ($is_utf8) {
-                                $len = $this->utf8CharBoundary($word, $len);
-                            } elseif (substr($word, $len - 1, 1) == '=') {
-                                $len--;
-                            } elseif (substr($word, $len - 2, 1) == '=') {
-                                $len -= 2;
-                            }
-                            $part = substr($word, 0, $len);
-                            $word = substr($word, $len);
+                            $getPartWord($space_left);
                             $buf .= ' ' . $part;
                             $message .= $buf . sprintf('=%s', self::CRLF);
                         } else {
@@ -1516,16 +1511,7 @@ class PHPMailer
                         if ($length <= 0) {
                             break;
                         }
-                        $len = $length;
-                        if ($is_utf8) {
-                            $len = $this->utf8CharBoundary($word, $len);
-                        } elseif (substr($word, $len - 1, 1) == '=') {
-                            $len--;
-                        } elseif (substr($word, $len - 2, 1) == '=') {
-                            $len -= 2;
-                        }
-                        $part = substr($word, 0, $len);
-                        $word = substr($word, $len);
+                        $getPartWord($length);
 
                         if (strlen($word) > 0) {
                             $message .= $part . sprintf('=%s', self::CRLF);
@@ -2669,7 +2655,7 @@ class PHPMailer
     public function clearAddresses()
     {
         foreach ($this->to as $to) {
-            unset($this->all_recipients[strtolower($to[0])]);
+            $this->_clearEntity('to');
         }
         $this->to = array();
     }
@@ -2681,7 +2667,7 @@ class PHPMailer
     public function clearCCs()
     {
         foreach ($this->cc as $cc) {
-            unset($this->all_recipients[strtolower($cc[0])]);
+            $this->_clearEntity('cc');
         }
         $this->cc = array();
     }
@@ -2693,9 +2679,13 @@ class PHPMailer
     public function clearBCCs()
     {
         foreach ($this->bcc as $bcc) {
-            unset($this->all_recipients[strtolower($bcc[0])]);
+            $this->_clearEntity('bcc');
         }
         $this->bcc = array();
+    }
+
+    private function _clearEntity ($entity){
+        unset($this->all_recipients[strtolower($$entity[0])]);
     }
 
     /**

@@ -15,7 +15,7 @@ class PHPLogin
     /**
      * @var boolean $password_reset_link_is_valid Marker for view handling
      */
-    private $password_reset_link_is_valid  = false;
+    private $password_reset_link_is_valid = false;
     /**
      * @var boolean $password_reset_was_successful Marker for view handling
      */
@@ -45,17 +45,17 @@ class PHPLogin
         } else if (version_compare(PHP_VERSION, '5.5.0', '<')) {
             // if you are using PHP 5.3 or PHP 5.4 you have to include the password_api_compatibility_library.php
             // (this library adds the PHP 5.5 password hashing functions to older versions of PHP)
-            require_once(__DIR__ .'/libraries/password_compatibility_library.php');
+            require_once(__DIR__ . '/libraries/password_compatibility_library.php');
         }
 
         // include the config
-        require_once(__DIR__ .'/config/config.php');
+        require_once(__DIR__ . '/config/config.php');
 
         // include the to-be-used language. feel free to translate your project and include something else.
         // detection of the language for the current user/browser
         $user_lang = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, 2);
         // if translation file for the detected language doesn't exist, we use default english file
-        require_once(__DIR__ .'/translations/' . (file_exists(__DIR__ .'/translations/' . $user_lang . '.php') ? $user_lang : 'en') . '.php');
+        require_once(__DIR__ . '/translations/' . (file_exists(__DIR__ . '/translations/' . $user_lang . '.php') ? $user_lang : 'en') . '.php');
 
         // create/read session
         @session_start();
@@ -66,58 +66,103 @@ class PHPLogin
 
     /**
      * this function looks into $_POST and $_GET to execute the corresponding login/registration action.
+     *
+     * check the possible REGISTER actions:
+     * 1.  register new user
+     * 2.  verification new user
+     *
+     * check the possible LOGIN actions:
+     * 1.  login via session data (happens each time user opens a page on your php project
+     *     AFTER he has successfully logged in via the login form)
+     * 2.  login via cookie
+     * 3.  login via post data, which means simply logging in via the login form.
+     *     After the user has submit his login/password successfully, his
+     *     logged-in-status is written into his session data on the server.
+     *     This is the typical behaviour of common login scripts.
+     *
+     * check the possible OTHER actions:
+     * 1.  logout (happen when user clicks logout button)
+     * 2.  checking if user requested a password reset mail
      */
     private function ExecuteAction()
     {
+        //
+        // REGISTER
+        //
+
+        // 1.
         // if we have such a POST request, call the registerNewUser() method
-        if (isset($_POST["captcha"]) && isset($_POST["register"]) && (ALLOW_USER_REGISTRATION || (ALLOW_ADMIN_TO_REGISTER_NEW_USER && $_SESSION['user_access_level'] == 255))) {
-            $this->registerNewUser($_POST['user_name'], $_POST['user_email'], $_POST['user_password_new'], $_POST['user_password_repeat'], $_POST["captcha"]);
+        if (
+               isset($_POST["captcha"])
+            && isset($_POST["register"])
+            && (ALLOW_USER_REGISTRATION || (ALLOW_ADMIN_TO_REGISTER_NEW_USER && $_SESSION['user_access_level'] == 255))
+        )
+        {
+            $this->registerNewUser(
+                $_POST['user_name'],
+                $_POST['user_email'],
+                $_POST['user_password_new'],
+                $_POST['user_password_repeat'],
+                $_POST["captcha"]
+            );
+        }
+        // 2.
         // if we have such a GET request, call the verifyNewUser() method
-        } else if (isset($_GET["id"]) && isset($_GET["verification_code"])) {
+        else if (isset($_GET["id"]) && isset($_GET["verification_code"])) {
             $this->verifyNewUser($_GET["id"], $_GET["verification_code"]);
         }
 
-        // check the possible login actions:
-        // 1. logout (happen when user clicks logout button)
-        // 2. login via session data (happens each time user opens a page on your php project AFTER he has successfully logged in via the login form)
-        // 3. login via cookie
-        // 4. login via post data, which means simply logging in via the login form. after the user has submit his login/password successfully, his
-        //    logged-in-status is written into his session data on the server. this is the typical behaviour of common login scripts.
+        //
+        // LOGIN
+        //
 
-        // if user tried to log out
-        if (isset($_GET["logout"])) {
-            $this->doLogout();
-
+        // 1.
         // if user has an active session on the server
-        } elseif (!empty($_SESSION['user_name']) && ($_SESSION['user_logged_in'] == 1)) {
+        elseif (!empty($_SESSION['user_name']) && ($_SESSION['user_logged_in'] == 1)) {
 
             // checking for form submit from editing screen
             // user try to change his username
             if (isset($_POST["user_edit_submit_name"])) {
                 // function below uses $_SESSION['user_id'] et $_SESSION['user_email']
                 $this->editUserName($_POST['user_name']);
-            // user try to change his email
+                // user try to change his email
             } elseif (isset($_POST["user_edit_submit_email"])) {
                 // function below uses $_SESSION['user_id'] et $_SESSION['user_email']
                 $this->editUserEmail($_POST['user_email']);
-            // user try to change his password
+                // user try to change his password
             } elseif (isset($_POST["user_edit_submit_password"])) {
                 // function below uses $_SESSION['user_name'] and $_SESSION['user_id']
-                $this->editUserPassword($_POST['user_password_old'], $_POST['user_password_new'], $_POST['user_password_repeat']);
+                $this->editUserPassword(
+                    $_POST['user_password_old'],
+                    $_POST['user_password_new'],
+                    $_POST['user_password_repeat']
+                );
             }
-
+        }
+        // 2.
         // login with cookie
-        } elseif (isset($_COOKIE['rememberme'])) {
+        elseif (isset($_COOKIE['rememberme'])) {
             $this->loginWithCookieData();
-
+        }
+        // 3.
         // if user just submitted a login form
-        } elseif (isset($_POST["login"])) {
+        elseif (isset($_POST["login"])) {
             if (!isset($_POST['user_rememberme'])) {
                 $_POST['user_rememberme'] = null;
             }
             $this->loginWithPostData($_POST['user_name'], $_POST['user_password'], $_POST['user_rememberme']);
         }
 
+        //
+        // OTHER
+        //
+
+        // 1.
+        // if user tried to log out
+        else if (isset($_GET["logout"])) {
+            $this->doLogout();
+        }
+        // 2.
         // checking if user requested a password reset mail
         if (isset($_REQUEST["user_name"]) && isset($_REQUEST["verification_code"])) {
             $this->checkIfEmailVerificationCodeIsValid($_REQUEST["user_name"], $_REQUEST["verification_code"]);
@@ -144,7 +189,7 @@ class PHPLogin
                 // Also important: We include the charset, as leaving it out seems to be a security issue:
                 // @see http://wiki.hashphp.org/PDO_Tutorial_for_MySQL_Developers#Connecting_to_MySQL says:
                 // "Adding the charset to the DSN is very important for security reasons"
-                $this->db_connection = new PDO('mysql:host='. DB_HOST .';dbname='. DB_NAME . ';charset=utf8', DB_USER, DB_PASS);
+                $this->db_connection = new PDO('mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8', DB_USER, DB_PASS);
                 return true;
             } catch (PDOException $e) {
                 $this->errors[] = MESSAGE_DATABASE_ERROR . $e->getMessage();
@@ -156,8 +201,9 @@ class PHPLogin
 
     /**
      * Search into database for the user data of user_name specified as parameter
-     * @return user data as an object if existing user
-     * @return false if user_name is not found in the database
+     * @param $user_name string
+     * @return \user - user data as an object if existing user
+     * @return bool - false if user_name is not found in the database
      */
     private function getUserData($user_name)
     {
@@ -176,8 +222,9 @@ class PHPLogin
 
     /**
      * Search into database for the user data of user_email specified as parameter
-     * @return user data as an object if existing user
-     * @return false if user_email is not found in the database
+     * @param $user_email
+     * @return \user - user data as an object if existing user
+     * @return bool - false if user_email is not found in the database
      */
     private function getUserDataFromEmail($user_email)
     {
@@ -196,7 +243,8 @@ class PHPLogin
 
     /**
      * Crypt the $password with the PHP 5.5's password_hash()
-     * @return 60 character hash password string
+     * @param $password string
+     * @return bool|false|string - 60 character hash password string
      */
     private function getPasswordHash($password)
     {
@@ -217,13 +265,13 @@ class PHPLogin
      */
     private function getPHPMailerObject()
     {
-        require_once(__DIR__ .'/libraries/PHPMailer.php');
+        require_once(__DIR__ . '/libraries/PHPMailer.php');
         $mail = new PHPMailer;
 
         // please look into the config/config.php for much more info on how to use this!
         // use SMTP or use mail()
         if (EMAIL_USE_SMTP) {
-            require_once(__DIR__ .'/libraries/SMTP.php');
+            require_once(__DIR__ . '/libraries/SMTP.php');
             // Set mailer to use SMTP
             $mail->IsSMTP();
             //useful for debugging, shows full SMTP errors
@@ -269,12 +317,7 @@ class PHPLogin
                     $result_row = $sth->fetchObject();
 
                     if (isset($result_row->user_id)) {
-                        // write user data into PHP SESSION [a file on your server]
-                        $_SESSION['user_id'] = $result_row->user_id;
-                        $_SESSION['user_name'] = $result_row->user_name;
-                        $_SESSION['user_email'] = $result_row->user_email;
-                        $_SESSION['user_access_level'] = $result_row->user_access_level;
-                        $_SESSION['user_logged_in'] = 1;
+                        $this->_writeUserDataIntoSession($result_row); // write user data into PHP SESSION [a file on your server]
 
                         // Cookie token usable only once
                         $this->newRememberMeCookie($token);
@@ -290,6 +333,17 @@ class PHPLogin
     }
 
     /**
+     * write user data into PHP SESSION [a file on your server]
+     */
+    private function _writeUserDataIntoSession ($result_row){
+        $_SESSION['user_id'] = $result_row->user_id;
+        $_SESSION['user_name'] = $result_row->user_name;
+        $_SESSION['user_email'] = $result_row->user_email;
+        $_SESSION['user_access_level'] = $result_row->user_access_level;
+        $_SESSION['user_logged_in'] = 1;
+    }
+
+    /**
      * Logs in with the data provided in $_POST, coming from the login form
      * @param $user_name
      * @param $user_password
@@ -302,7 +356,7 @@ class PHPLogin
         } else if (empty($user_password)) {
             $this->errors[] = MESSAGE_PASSWORD_EMPTY;
 
-        // if POST data (from login form) contains non-empty user_name and non-empty user_password
+            // if POST data (from login form) contains non-empty user_name and non-empty user_password
         } else {
             // user can login with his username or his email address.
             // if user has not typed a valid email address, we try to identify him with his user_name
@@ -310,43 +364,38 @@ class PHPLogin
                 // database query, getting all the info of the selected user
                 $result_row = $this->getUserData(trim($user_name));
 
-            // if user has typed a valid email address, we try to identify him with his user_email
+                // if user has typed a valid email address, we try to identify him with his user_email
             } else {
                 // database query, getting all the info of the selected user
                 $result_row = $this->getUserDataFromEmail(trim($user_name));
             }
 
             // if this user not exists
-            if (! isset($result_row->user_id)) {
+            if (!isset($result_row->user_id)) {
                 // was MESSAGE_USER_DOES_NOT_EXIST before, but has changed to MESSAGE_LOGIN_FAILED
                 // to prevent potential attackers showing if the user exists
                 $this->errors[] = MESSAGE_LOGIN_FAILED;
             } else if (($result_row->user_failed_logins >= 3) && ($result_row->user_last_failed_login > (time() - 30))) {
                 $this->errors[] = MESSAGE_PASSWORD_WRONG_3_TIMES;
-            // using PHP 5.5's password_verify() function to check if the provided passwords fits to the hash of that user's password
-            } else if (! password_verify($user_password, $result_row->user_password_hash)) {
+                // using PHP 5.5's password_verify() function to check if the provided passwords fits to the hash of that user's password
+            } else if (!password_verify($user_password, $result_row->user_password_hash)) {
                 // increment the failed login counter for that user
                 $sth = $this->db_connection->prepare('UPDATE users '
-                        . 'SET user_failed_logins = user_failed_logins+1, user_last_failed_login = :user_last_failed_login '
-                        . 'WHERE user_name = :user_name OR user_email = :user_name');
+                    . 'SET user_failed_logins = user_failed_logins+1, user_last_failed_login = :user_last_failed_login '
+                    . 'WHERE user_name = :user_name OR user_email = :user_name');
                 $sth->execute(array(':user_name' => $user_name, ':user_last_failed_login' => time()));
 
                 $this->errors[] = MESSAGE_PASSWORD_WRONG;
-            // has the user activated their account with the verification email
+                // has the user activated their account with the verification email
             } else if ($result_row->user_active != 1) {
                 $this->errors[] = MESSAGE_ACCOUNT_NOT_ACTIVATED;
             } else {
-                // write user data into PHP SESSION [a file on your server]
-                $_SESSION['user_id'] = $result_row->user_id;
-                $_SESSION['user_name'] = $result_row->user_name;
-                $_SESSION['user_email'] = $result_row->user_email;
-                $_SESSION['user_access_level'] = $result_row->user_access_level;
-                $_SESSION['user_logged_in'] = 1;
+                $this->_writeUserDataIntoSession($result_row); // write user data into PHP SESSION [a file on your server]
 
                 // reset the failed login counter for that user
                 $sth = $this->db_connection->prepare('UPDATE users '
-                        . 'SET user_failed_logins = 0, user_last_failed_login = NULL '
-                        . 'WHERE user_id = :user_id AND user_failed_logins != 0');
+                    . 'SET user_failed_logins = 0, user_last_failed_login = NULL '
+                    . 'WHERE user_id = :user_id AND user_failed_logins != 0');
                 $sth->execute(array(':user_id' => $result_row->user_id));
 
                 // if user has check the "remember me" checkbox, then generate token and write cookie
@@ -400,8 +449,7 @@ class PHPLogin
                 $sth->bindValue(':user_login_agent', $_SERVER['HTTP_USER_AGENT'], PDO::PARAM_STR);
                 $sth->bindValue(':user_login_ip', $_SERVER['REMOTE_ADDR'], PDO::PARAM_STR);
                 $sth->execute();
-            }
-            // update current rememberme token hash by a new one
+            } // update current rememberme token hash by a new one
             else {
                 $sth = $this->db_connection->prepare("UPDATE user_connections SET user_rememberme_token = :new_token, user_last_visit=now(), user_last_visit_agent = :user_agent WHERE user_id = :user_id AND user_rememberme_token = :old_token");
                 $sth->bindValue(':new_token', $random_token_string, PDO::PARAM_STR);
@@ -480,7 +528,7 @@ class PHPLogin
         if (!empty($user_name) && $user_name == $_SESSION['user_name']) {
             $this->errors[] = MESSAGE_USERNAME_SAME_LIKE_OLD_ONE;
 
-        // username cannot be empty and must be azAZ09 and 2-64 characters
+            // username cannot be empty and must be azAZ09 and 2-64 characters
         } elseif (empty($user_name) || !preg_match('/^[a-zA-Z0-9]{2,64}$/', $user_name)) {
             $this->errors[] = MESSAGE_USERNAME_INVALID;
 
@@ -517,7 +565,7 @@ class PHPLogin
 
         if (!empty($user_email) && $user_email == $_SESSION["user_email"]) {
             $this->errors[] = MESSAGE_EMAIL_SAME_LIKE_OLD_ONE;
-        // user mail cannot be empty and must be in email format
+            // user mail cannot be empty and must be in email format
         } elseif (empty($user_email) || !filter_var($user_email, FILTER_VALIDATE_EMAIL)) {
             $this->errors[] = MESSAGE_EMAIL_INVALID;
 
@@ -552,14 +600,14 @@ class PHPLogin
     {
         if (empty($user_password_new) || empty($user_password_repeat) || empty($user_password_old)) {
             $this->errors[] = MESSAGE_PASSWORD_EMPTY;
-        // is the repeat password identical to password
+            // is the repeat password identical to password
         } elseif ($user_password_new !== $user_password_repeat) {
             $this->errors[] = MESSAGE_PASSWORD_BAD_CONFIRM;
-        // password need to have a minimum length of 6 characters
+            // password need to have a minimum length of 6 characters
         } elseif (strlen($user_password_new) < 6) {
             $this->errors[] = MESSAGE_PASSWORD_TOO_SHORT;
 
-        // all the above tests are ok
+            // all the above tests are ok
         } else {
             // database query, getting hash of currently logged in user (to check with just provided password)
             $result_row = $this->getUserData($_SESSION['user_name']);
@@ -658,7 +706,7 @@ class PHPLogin
         $link .= '&user_name=' . urlencode($user_name) . '&verification_code=' . urlencode($user_password_reset_hash);
         $mail->Body = EMAIL_PASSWORDRESET_CONTENT . ' ' . $link;
 
-        if(!$mail->Send()) {
+        if (!$mail->Send()) {
             $this->errors[] = MESSAGE_PASSWORD_RESET_MAIL_FAILED . $mail->ErrorInfo;
             return false;
         } else {
@@ -707,13 +755,13 @@ class PHPLogin
 
         if (empty($user_name) || empty($user_password_reset_hash) || empty($user_password_new) || empty($user_password_repeat)) {
             $this->errors[] = MESSAGE_PASSWORD_EMPTY;
-        // is the repeat password identical to password
+            // is the repeat password identical to password
         } else if ($user_password_new !== $user_password_repeat) {
             $this->errors[] = MESSAGE_PASSWORD_BAD_CONFIRM;
-        // password need to have a minimum length of 6 characters
+            // password need to have a minimum length of 6 characters
         } else if (strlen($user_password_new) < 6) {
             $this->errors[] = MESSAGE_PASSWORD_TOO_SHORT;
-        // if database connection opened
+            // if database connection opened
         } else if ($this->databaseConnection()) {
             // crypt the user's password with the PHP 5.5's password_hash() function.
             $user_password_hash = $this->getPasswordHash($user_password_new);
@@ -821,7 +869,7 @@ class PHPLogin
         } elseif (!filter_var($user_email, FILTER_VALIDATE_EMAIL)) {
             $this->errors[] = MESSAGE_EMAIL_INVALID;
 
-        // finally if all the above checks are ok
+            // finally if all the above checks are ok
         } else {
             // check if username already exists
             $result_row = $this->getUserData($user_name);
@@ -829,7 +877,7 @@ class PHPLogin
             if (isset($result_row->user_id)) {
                 $this->errors[] = MESSAGE_USERNAME_EXISTS;
                 return;
-            // check if email already in use
+                // check if email already in use
             } else {
                 $result_row = $this->getUserDataFromEmail($user_email);
             }
@@ -838,7 +886,7 @@ class PHPLogin
             if (isset($result_row->user_id)) {
                 $this->errors[] = MESSAGE_EMAIL_ALREADY_EXISTS;
 
-            // Ok user can be create
+                // Ok user can be create
             } else {
                 // crypt the user's password with the PHP 5.5's password_hash() function.
                 $user_password_hash = $this->getPasswordHash($user_password);
@@ -895,9 +943,9 @@ class PHPLogin
         $link .= '?id=' . urlencode($user_id) . '&verification_code=' . urlencode($user_activation_hash);
 
         // the link to your register.php, please set this value in config/email_verification.php
-        $mail->Body = EMAIL_VERIFICATION_CONTENT.' '.$link;
+        $mail->Body = EMAIL_VERIFICATION_CONTENT . ' ' . $link;
 
-        if(!$mail->Send()) {
+        if (!$mail->Send()) {
             $this->errors[] = MESSAGE_VERIFICATION_MAIL_NOT_SENT . $mail->ErrorInfo;
             return false;
         } else {
