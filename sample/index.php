@@ -15,8 +15,8 @@ $login = new PHPLogin();
 include('views/_header.php');
 
 // show the registration form
-if (isset($_GET['register']) && ! $login->isRegistrationSuccessful() && 
-   (ALLOW_USER_REGISTRATION || (ALLOW_ADMIN_TO_REGISTER_NEW_USER && $_SESSION['user_access_level'] == 255))) {
+if (isset($_GET['register']) && ! $login->isRegistrationSuccessful() &&
+   (ALLOW_USER_REGISTRATION || (ALLOW_ADMIN_TO_REGISTER_NEW_USER && $_SESSION['user_access_level'] == $_SESSION['ADMIN_LEVEL']))) {
     include('views/register.php');
 
 // show the request-a-password-reset or type-your-new-password form
@@ -25,7 +25,7 @@ if (isset($_GET['register']) && ! $login->isRegistrationSuccessful() &&
         // reset link is correct: ask for the new password
         include("views/password_reset.php");
     } else {
-        // no data from a password-reset-mail has been provided, 
+        // no data from a password-reset-mail has been provided,
         // we show the request-a-password-reset form
         include('views/password_reset_request.php');
     }

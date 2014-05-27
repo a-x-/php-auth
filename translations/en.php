@@ -50,9 +50,7 @@ define("MESSAGE_USERNAME_SAME_LIKE_OLD_ONE", "Sorry, that username is the same a
 
 // views
 define("WORDING_BACK_TO_LOGIN", "Back to Login Page");
-define("WORDING_CHANGE_EMAIL", "Change email");
-define("WORDING_CHANGE_PASSWORD", "Change password");
-define("WORDING_CHANGE_USERNAME", "Change username");
+define("WORDING_CHANGE_PROFILE", "Change profile");
 define("WORDING_CURRENTLY", "currently");
 define("WORDING_EDIT_USER_DATA", "Edit user data");
 define("WORDING_EDIT_YOUR_CREDENTIALS", "You are logged in and can edit your credentials here");

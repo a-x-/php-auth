@@ -50,9 +50,7 @@ define('MESSAGE_USERNAME_SAME_LIKE_OLD_ONE', 'Новый ник совпадае
 
 // views
 define('WORDING_BACK_TO_LOGIN', 'Вернуться на страницу авторизации');
-define('WORDING_CHANGE_EMAIL', 'Сменить e-mail');
-define('WORDING_CHANGE_PASSWORD', 'Сменить пароль');
-define('WORDING_CHANGE_USERNAME', 'Сменить ник');
+define("WORDING_CHANGE_PROFILE", "Изменить профиль");
 define('WORDING_CURRENTLY', 'текущий');
 define('WORDING_EDIT_USER_DATA', 'Редактировать профиль');
 define('WORDING_EDIT_YOUR_CREDENTIALS', 'Вы вошли и можете отредактировать ваш профиль здесь');
