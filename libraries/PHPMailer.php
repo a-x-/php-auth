@@ -44,7 +44,7 @@ class PHPMailer
      * The character set of the message.
      * @type string
      */
-    public $CharSet = 'iso-8859-1';
+    public $CharSet = 'utf-8';
 
     /**
      * The MIME Content-type of the message.
@@ -773,7 +773,7 @@ class PHPMailer
             }
             return false;
         }
-        if(!$this->_processCheckAddressName($address,$name)) return false;
+        if(!$this->processCheckAddressName($address,$name)) return false;
         if ($kind != 'Reply-To') {
             if (!isset($this->all_recipients[strtolower($address)])) {
                 array_push($this->$kind, array($address, $name));
@@ -789,7 +789,7 @@ class PHPMailer
         return false;
     }
 
-    private function _processCheckAddressName (&$address,&$name) {
+    private function processCheckAddressName (&$address,&$name) {
         $address = trim($address);
         $name = trim(preg_replace('/[\r\n]+/', '', $name)); //Strip breaks and trim
         if (!$this->validateAddress($address)) {
@@ -813,7 +813,7 @@ class PHPMailer
      */
     public function setFrom($address, $name = '', $auto = true)
     {
-        if(!$this->_processCheckAddressName($address,$name)) return false;
+        if(!$this->processCheckAddressName($address,$name)) return false;
         $this->From = $address;
         $this->FromName = $name;
         if ($auto) {
@@ -1172,9 +1172,9 @@ class PHPMailer
         return $this->smtp;
     }
 
-    private function  _attemptToSendToRecipient($entity) {
-        if (!$this->smtp->recipient($$entity[0])) {
-            $bad_rcpt[] = $$entity[0];
+    protected function attemptToSendToRecipient($entity) {
+        if (!$this->smtp->recipient($entity[0])) {
+            $bad_rcpt[] = $entity[0];
             $isSent = 0;
         } else {
             $isSent = 1;
@@ -1209,15 +1209,15 @@ class PHPMailer
 
         // Attempt to send to all recipients
         foreach ($this->to as $to) {
-            $isSent = $this->_attemptToSendToRecipient('to');
+            $isSent = $this->attemptToSendToRecipient($to);
             $this->doCallback($isSent, $to[0], '', '', $this->Subject, $body, $this->From);
         }
         foreach ($this->cc as $cc) {
-            $isSent = $this->_attemptToSendToRecipient('cc');
+            $isSent = $this->attemptToSendToRecipient($cc);
             $this->doCallback($isSent, '', $cc[0], '', $this->Subject, $body, $this->From);
         }
         foreach ($this->bcc as $bcc) {
-            $isSent = $this->_attemptToSendToRecipient('bcc');
+            $isSent = $this->attemptToSendToRecipient($bcc);
             $this->doCallback($isSent, '', '', $bcc[0], $this->Subject, $body, $this->From);
         }
 
@@ -2650,14 +2650,15 @@ class PHPMailer
 
     /**
      * Clear all To recipients.
+     * @param string $addressType (optional) to|cc|bcc
      * @return void
      */
-    public function clearAddresses()
+    public function clearAddresses($addressType = 'to')
     {
-        foreach ($this->to as $to) {
-            $this->_clearEntity('to');
+        foreach ($this->$addressType as $$addressType) {
+            unset($this->all_recipients[strtolower($$addressType[0])]);
         }
-        $this->to = array();
+        $this->$addressType = array();
     }
 
     /**
@@ -2666,10 +2667,7 @@ class PHPMailer
      */
     public function clearCCs()
     {
-        foreach ($this->cc as $cc) {
-            $this->_clearEntity('cc');
-        }
-        $this->cc = array();
+        $this->clearAddresses('cc');
     }
 
     /**
@@ -2678,14 +2676,7 @@ class PHPMailer
      */
     public function clearBCCs()
     {
-        foreach ($this->bcc as $bcc) {
-            $this->_clearEntity('bcc');
-        }
-        $this->bcc = array();
-    }
-
-    private function _clearEntity ($entity){
-        unset($this->all_recipients[strtolower($$entity[0])]);
+        $this->clearAddresses('bcc');
     }
 
     /**

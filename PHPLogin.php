@@ -9,7 +9,7 @@
 class PHPLogin
 {
     /**
-     * @var object $db_connection The database connection
+     * @var \PDO $db_connection The database connection
      */
     private $db_connection = null;
     /**
@@ -37,7 +37,7 @@ class PHPLogin
      * the function "__construct()" automatically starts whenever an object of this class is created,
      * you know, when you do "$login = new PHPLogin();"
      */
-    public function __construct()
+    public function __construct($configPath = '')
     {
         // check for minimum PHP version
         if (version_compare(PHP_VERSION, '5.3.7', '<')) {
@@ -49,7 +49,7 @@ class PHPLogin
         }
 
         // include the config
-        require_once(__DIR__ . '/config/config.php');
+        require_once($configPath ? $configPath : __DIR__ . '/sample/config/config.php');
 
         // include the to-be-used language. feel free to translate your project and include something else.
         // detection of the language for the current user/browser
@@ -95,7 +95,7 @@ class PHPLogin
         if (
                isset($_POST["captcha"])
             && isset($_POST["register"])
-            && (ALLOW_USER_REGISTRATION || (ALLOW_ADMIN_TO_REGISTER_NEW_USER && $_SESSION['user_access_level'] == 255))
+            && (ALLOW_USER_REGISTRATION || (ALLOW_ADMIN_TO_REGISTER_NEW_USER && $_SESSION['user_access_level'] == $_SESSION['ADMIN_LEVEL']))
         )
         {
             $this->registerNewUser(
@@ -119,18 +119,24 @@ class PHPLogin
         // 1.
         // if user has an active session on the server
         elseif (!empty($_SESSION['user_name']) && ($_SESSION['user_logged_in'] == 1)) {
-
+            // 1.1.
             // checking for form submit from editing screen
             // user try to change his username
             if (isset($_POST["user_edit_submit_name"])) {
                 // function below uses $_SESSION['user_id'] et $_SESSION['user_email']
                 $this->editUserName($_POST['user_name']);
-                // user try to change his email
-            } elseif (isset($_POST["user_edit_submit_email"])) {
+            }
+
+            // 1.2.
+            // user try to change his email
+            elseif (isset($_POST["user_edit_submit_email"])) {
                 // function below uses $_SESSION['user_id'] et $_SESSION['user_email']
                 $this->editUserEmail($_POST['user_email']);
-                // user try to change his password
-            } elseif (isset($_POST["user_edit_submit_password"])) {
+            }
+
+            // 1.3.
+            // user try to change his password
+            elseif (isset($_POST["user_edit_submit_password"])) {
                 // function below uses $_SESSION['user_name'] and $_SESSION['user_id']
                 $this->editUserPassword(
                     $_POST['user_password_old'],
@@ -202,7 +208,7 @@ class PHPLogin
     /**
      * Search into database for the user data of user_name specified as parameter
      * @param $user_name string
-     * @return \user - user data as an object if existing user
+     * @return object - user data as an object if existing user
      * @return bool - false if user_name is not found in the database
      */
     private function getUserData($user_name)
@@ -223,7 +229,7 @@ class PHPLogin
     /**
      * Search into database for the user data of user_email specified as parameter
      * @param $user_email
-     * @return \user - user data as an object if existing user
+     * @return object - user data as an object if existing user
      * @return bool - false if user_email is not found in the database
      */
     private function getUserDataFromEmail($user_email)

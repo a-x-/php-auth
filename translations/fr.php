@@ -50,9 +50,7 @@ define("MESSAGE_USERNAME_SAME_LIKE_OLD_ONE", "Désolé, ce nom d'utilisateur est
 
 // views
 define("WORDING_BACK_TO_LOGIN", "Revenir à la page de connexion");
-define("WORDING_CHANGE_EMAIL", "Changer l'adresse email");
-define("WORDING_CHANGE_PASSWORD", "Changer le mot de passe");
-define("WORDING_CHANGE_USERNAME", "Changer le nom d'utilisateur");
+define("WORDING_CHANGE_PROFILE", "Changer profil");
 define("WORDING_CURRENTLY", "actuellement");
 define("WORDING_EDIT_USER_DATA", "Modifier mon compte");
 define("WORDING_EDIT_YOUR_CREDENTIALS", "Vous êtes connecté et pouvez modifier vos informations de connexion ici");
