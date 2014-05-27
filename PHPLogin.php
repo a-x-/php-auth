@@ -1,4 +1,5 @@
 <?php
+
 /**
  * handles the user login/logout/session
  * @author devplanete (2013 - 2014)
@@ -93,11 +94,10 @@ class PHPLogin
         // 1.
         // if we have such a POST request, call the registerNewUser() method
         if (
-               isset($_POST["captcha"])
+            isset($_POST["captcha"])
             && isset($_POST["register"])
             && (ALLOW_USER_REGISTRATION || (ALLOW_ADMIN_TO_REGISTER_NEW_USER && $_SESSION['user_access_level'] == $_SESSION['ADMIN_LEVEL']))
-        )
-        {
+        ) {
             $this->registerNewUser(
                 $_POST['user_name'],
                 $_POST['user_email'],
@@ -280,6 +280,8 @@ class PHPLogin
             require_once(__DIR__ . '/libraries/SMTP.php');
             // Set mailer to use SMTP
             $mail->IsSMTP();
+            if(EMAIL_BODY_TYPE == 'html')
+                $mail->isHTML();
             //useful for debugging, shows full SMTP errors
             //$mail->SMTPDebug = 1; // debugging: 1 = errors and messages, 2 = messages only
             // Enable SMTP authentication
@@ -341,7 +343,8 @@ class PHPLogin
     /**
      * write user data into PHP SESSION [a file on your server]
      */
-    private function _writeUserDataIntoSession ($result_row){
+    private function _writeUserDataIntoSession($result_row)
+    {
         $_SESSION['user_id'] = $result_row->user_id;
         $_SESSION['user_name'] = $result_row->user_name;
         $_SESSION['user_email'] = $result_row->user_email;
@@ -710,7 +713,10 @@ class PHPLogin
 
         $link = 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'] . '?password_reset';
         $link .= '&user_name=' . urlencode($user_name) . '&verification_code=' . urlencode($user_password_reset_hash);
-        $mail->Body = EMAIL_PASSWORDRESET_CONTENT . ' ' . $link;
+        if(EMAIL_BODY_TYPE == 'html') {
+            $link = "<a href='$link'>".WORDING_LETTER_SUBMIT."</a>";
+        }
+        $mail->Body = \Invntrm\specifyTemplate(EMAIL_PASSWORDRESET_CONTENT,['link'=>$link]);
 
         if (!$mail->Send()) {
             $this->errors[] = MESSAGE_PASSWORD_RESET_MAIL_FAILED . $mail->ErrorInfo;
@@ -949,7 +955,10 @@ class PHPLogin
         $link .= '?id=' . urlencode($user_id) . '&verification_code=' . urlencode($user_activation_hash);
 
         // the link to your register.php, please set this value in config/email_verification.php
-        $mail->Body = EMAIL_VERIFICATION_CONTENT . ' ' . $link;
+        if(EMAIL_BODY_TYPE == 'html') {
+            $link = "<a href='$link'>".WORDING_LETTER_SUBMIT."</a>";
+        }
+        $mail->Body = \Invntrm\specifyTemplate(EMAIL_VERIFICATION_CONTENT,['link'=>$link]);
 
         if (!$mail->Send()) {
             $this->errors[] = MESSAGE_VERIFICATION_MAIL_NOT_SENT . $mail->ErrorInfo;
