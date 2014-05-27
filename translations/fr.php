@@ -77,3 +77,4 @@ define("WORDING_RESET_PASSWORD", "Réinitialiser mon mot de passe");
 define("WORDING_SUBMIT_NEW_PASSWORD", "Soumettre le nouveau mot de passe");
 define("WORDING_USERNAME", "Nom d'utilisateur");
 define("WORDING_YOU_ARE_LOGGED_IN_AS", "Vous êtes connecté en tant que ");
+define('WORDING_LETTER_SUBMIT', 'Submit account');
