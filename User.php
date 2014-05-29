@@ -218,7 +218,7 @@ function checkPostData($user_email)
             // check if exactly one row was successfully changed:
             if ($query_update->rowCount() == 1) {
                 // send a mail to the user, containing a link with that token hash string
-                \User\Reset\sendVerifyMail($result_row->user_email, $user_password_reset_hash);
+                \User\Reset\sendVerifyMail($result_row->email, $user_password_reset_hash);
                 return true;
             } else {
                 $login->errors[] = MESSAGE_DATABASE_ERROR;

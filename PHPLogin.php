@@ -72,7 +72,7 @@ class PHPLogin
         //
         $this->USER_NAME_VERIFICATION_REGEX = '/^[0-9 \-_' . (ALLOW_UTF8_USERNAMES ? '[:alpha:]' : 'a-z') . ']{2,64}$/iu';
         $this->REQUEST_PATH = (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
-        $this->REQUEST_PATH_API = $_REQUEST['api_path'];
+        $this->REQUEST_PATH_API = @$_REQUEST['api_path'];
         $this->REQUEST_METHOD = strtolower($_SERVER['REQUEST_METHOD']);
         $GLOBALS['login'] = $this;
         //
@@ -98,7 +98,7 @@ class PHPLogin
         //
         // 1.
         // Login with session
-        if($_SESSION['user_logged_in']){
+        if(!empty($_SESSION['user_logged_in'])){
         }
         //
         // 2.
@@ -183,7 +183,7 @@ class PHPLogin
         // if database connection opened
         if ($this->databaseConnection()) {
             // database query, getting all the info of the selected user
-            $query_user = $this->db_connection->prepare('SELECT * FROM users WHERE user_email = :user_email');
+            $query_user = $this->db_connection->prepare('SELECT * FROM user WHERE email = :user_email');
             $query_user->bindValue(':user_email', $user_email, PDO::PARAM_STR);
             $query_user->execute();
             // get result row (as an object)
@@ -261,9 +261,19 @@ class PHPLogin
                 // cookie looks good, try to select corresponding user
                 if ($this->databaseConnection()) {
                     // get real token from database (and all other data)
-                    $sth = $this->db_connection->prepare("SELECT u.user_id, u.user_name, u.user_email, u.user_access_level FROM user_connections uc
-                                                          LEFT JOIN users u ON uc.user_id = u.user_id WHERE uc.user_id = :user_id
-                                                          AND uc.user_rememberme_token = :user_rememberme_token AND uc.user_rememberme_token IS NOT NULL");
+                    $sth = $this->db_connection->prepare(
+                        "SELECT
+                           user.user_id,
+                           user.user_name,
+                           user.email,
+                           user.user_access_level
+                        FROM user_connections
+                           LEFT JOIN user u ON uc.user_id = u.user_id
+                        WHERE
+                           uc.user_id = :user_id
+                            AND uc.user_rememberme_token = :user_rememberme_token
+                            AND uc.user_rememberme_token IS NOT NULL"
+                    );
                     $sth->bindValue(':user_id', $user_id, PDO::PARAM_INT);
                     $sth->bindValue(':user_rememberme_token', $token, PDO::PARAM_STR);
                     $sth->execute();
@@ -293,7 +303,7 @@ class PHPLogin
     {
         $_SESSION['user_id'] = $result_row->user_id;
         $_SESSION['user_name'] = $result_row->user_name;
-        $_SESSION['user_email'] = $result_row->user_email;
+        $_SESSION['user_email'] = $result_row->email;
         $_SESSION['user_access_level'] = $result_row->user_access_level;
         $_SESSION['user_logged_in'] = 1;
     }
@@ -335,10 +345,10 @@ class PHPLogin
             } else if (!password_verify($user_password, $result_row->user_password_hash)) {
                 // increment the failed login counter for that user
                 $sth = $this->db_connection->prepare(
-                    'UPDATE users SET
+                    'UPDATE user SET
                         user_failed_logins = user_failed_logins+1,
                         user_last_failed_login = :user_last_failed_login
-                     WHERE user_email = :user_email'
+                     WHERE email = :user_email'
                 );
                 $sth->execute(array(':user_email' => $user_email, ':user_last_failed_login' => time()));
 
@@ -350,9 +360,10 @@ class PHPLogin
                 $this->_writeUserDataIntoSession($result_row); // write user data into PHP SESSION [a file on your server]
 
                 // reset the failed login counter for that user
-                $sth = $this->db_connection->prepare('UPDATE users '
-                    . 'SET user_failed_logins = 0, user_last_failed_login = NULL '
-                    . 'WHERE user_id = :user_id AND user_failed_logins != 0');
+                $sth = $this->db_connection->prepare(
+                    'UPDATE user SET user_failed_logins = 0, user_last_failed_login = NULL
+                    WHERE user_id = :user_id AND user_failed_logins != 0'
+                );
                 $sth->execute(array(':user_id' => $result_row->user_id));
 
                 // if user has check the "remember me" checkbox, then generate token and write cookie
@@ -372,7 +383,9 @@ class PHPLogin
                         $user_password_hash = $this->getPasswordHash($user_password);
 
                         // save the new password hash into database
-                        $query_update = $this->db_connection->prepare('UPDATE users SET user_password_hash = :user_password_hash WHERE user_id = :user_id');
+                        $query_update = $this->db_connection->prepare(
+                            'UPDATE user SET user_password_hash = :user_password_hash WHERE user_id = :user_id'
+                        );
                         $query_update->bindValue(':user_password_hash', $user_password_hash, PDO::PARAM_STR);
                         $query_update->bindValue(':user_id', $result_row->user_id, PDO::PARAM_INT);
                         $query_update->execute();
@@ -437,7 +450,7 @@ class PHPLogin
 
     public function deleteUser($user_email)
     {
-        $query_delete_user = $this->db_connection->prepare('DELETE FROM users WHERE user_email=:user_email');
+        $query_delete_user = $this->db_connection->prepare('DELETE FROM user WHERE email=:user_email');
         $query_delete_user->bindValue(':user_email', $user_email, PDO::PARAM_INT);
         $query_delete_user->execute();
     }
@@ -521,9 +534,9 @@ class PHPLogin
         //
         // write users new hash into database
         $query_update = $this->db_connection->prepare(
-            'UPDATE users SET
+            'UPDATE user SET
                user_password_hash = :user_password_hash,user_password_reset_hash = NULL, user_password_reset_timestamp = NULL
-             WHERE user_email = :user_email AND user_password_reset_hash = :user_password_reset_hash'
+             WHERE email = :user_email AND user_password_reset_hash = :user_password_reset_hash'
         );
         $query_update->bindValue(':user_password_hash', $user_password_hash, PDO::PARAM_STR);
         $query_update->bindValue(':user_password_reset_hash', $user_password_reset_hash, PDO::PARAM_STR);
@@ -541,10 +554,10 @@ class PHPLogin
     public function writeUsersPasswordResetTempHashIntoDB($user_password_reset_hash, $temporary_timestamp, $user_email)
     {
         $query_update = $this->db_connection->prepare(
-            'UPDATE users SET
+            'UPDATE user SET
                user_password_reset_hash = :user_password_reset_hash,
                user_password_reset_timestamp = :user_password_reset_timestamp
-             WHERE user_email = :user_email'
+             WHERE email = :user_email'
         );
         $query_update->bindValue(':user_password_reset_hash', $user_password_reset_hash, PDO::PARAM_STR);
         $query_update->bindValue(':user_password_reset_timestamp', $temporary_timestamp, PDO::PARAM_INT);
@@ -556,9 +569,9 @@ class PHPLogin
     public function writeUsersActiveStatusIntoDB($user_email, $user_activation_hash)
     {
         $query_update_user = $this->db_connection->prepare(
-            'UPDATE users SET
+            'UPDATE user SET
                 user_active = 1, user_activation_hash = NULL
-             WHERE user_email = :user_email AND user_activation_hash = :user_activation_hash'
+             WHERE email = :user_email AND user_activation_hash = :user_activation_hash'
         );
         $query_update_user->bindValue(':user_email', trim($user_email), PDO::PARAM_STR);
         $query_update_user->bindValue(':user_activation_hash', $user_activation_hash, PDO::PARAM_STR);
@@ -579,8 +592,8 @@ class PHPLogin
 //
         // write new users data into database
         $query_new_user_insert = $this->db_connection->prepare(
-            'INSERT INTO users (
-                user_name,  user_password_hash,  user_email,  user_activation_hash,  user_registration_ip,  user_registration_datetime
+            'INSERT INTO user (
+                user_name,  user_password_hash,  email,  user_activation_hash,  user_registration_ip,  user_registration_datetime
             ) VALUES(
                 :user_name, :user_password_hash, :user_email, :user_activation_hash, :user_registration_ip, now()
             )'
@@ -601,7 +614,9 @@ class PHPLogin
     function writeUserParamIntoDB($paramValue, $paramNameUntrusted)
     {
         $paramName = preg_replace('![^a-z0-9_-]!i', '', $paramNameUntrusted);
-        $query_edit_user_name = $this->db_connection->prepare("UPDATE users SET $paramName = :$paramName WHERE user_id = :user_id");
+        $query_edit_user_name = $this->db_connection->prepare(
+            'UPDATE user SET $paramName = :$paramName WHERE user_id = :user_id'
+        );
         $query_edit_user_name->bindValue(":$paramName", $paramValue, PDO::PARAM_STR);
         $query_edit_user_name->bindValue(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
         $query_edit_user_name->execute();
@@ -624,7 +639,6 @@ class PHPLogin
      */
     public function writeNewExtraUserDataIntoDB($user_email, $extra)
     {
-        ;
         foreach($extra as $extraName => $extraData) {
             $extraName = preg_replace('![^a-z0-9\-_]!i','',$extraName);
             $extraData = preg_split('!,!',$extraData);
@@ -637,16 +651,13 @@ class PHPLogin
             }
             // write new users data into database
             $query_new_user_insert = $this->db_connection->prepare(
-                'INSERT INTO user_extra_'.$extraName.' (
-                   user_email'.$extraNameNames.'
+                "INSERT INTO user_extra_$extraName (
+                   user_email $extraNameNames
                 ) VALUES(
-                    :user_email'.$extraNameNamesSemi.'
-                )'
+                    :user_email $extraNameNamesSemi
+                )"
             );
-//            $query_new_user_insert->bindValue(':user_email', $user_email, PDO::PARAM_STR);
-//        $query_new_user_insert->bindValue(':', $user_activation_hash, PDO::PARAM_STR);
             $result = $query_new_user_insert->execute($params);
-            $result;
         }
     }
 }
