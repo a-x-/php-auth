@@ -41,8 +41,8 @@ define("MESSAGE_VERIFICATION_MAIL_NOT_SENT", "Impossible de vous envoyez le mail
 define("MESSAGE_VERIFICATION_MAIL_SENT", "Votre compte utilisateur a été créé et un email de vérification vous a été envoyé. Merci de cliquer sur le LIEN DE VERIFICATION de cet email pour activer votre compte.");
 define("MESSAGE_USER_DOES_NOT_EXIST", "Cet utilisateur n'existe pas");
 define("MESSAGE_USERNAME_BAD_LENGTH", "Le nom d'utilisateur doit contenir entre 2 et 64 caractères");
-define("MESSAGE_USERNAME_CHANGE_FAILED", "Désolé, une erreur s'est produite durant le changement de votre nom d'utilisateur.");
-define("MESSAGE_USERNAME_CHANGED_SUCCESSFULLY", "Votre nom d'utilisateur a été changé. Votre nom d'utilisateur est maintenant ");
+define('MESSAGE_USER_PARAM_CHANGED_SUCCESSFULLY', 'Profile successful changed');//@todo translate
+define('MESSAGE_USER_PARAM_CHANGE_FAILED', 'Profile changing is failed!');//@todo translate
 define("MESSAGE_USERNAME_EMPTY", "Le nom d'utilisateur est vide");
 define("MESSAGE_USERNAME_EXISTS", "Désolé, ce nom d'utilisateur est déjà utilisé. Merci d'en choisir un autre.");
 define("MESSAGE_USERNAME_INVALID", "Nom d'utilisateur invalide : seul les lettres a-Z et les chiffres sont autorisés, longueur de 2 à 64 caractères");
@@ -76,5 +76,6 @@ define("WORDING_REQUEST_PASSWORD_RESET", "Démander la réinitialisation de mon 
 define("WORDING_RESET_PASSWORD", "Réinitialiser mon mot de passe");
 define("WORDING_SUBMIT_NEW_PASSWORD", "Soumettre le nouveau mot de passe");
 define("WORDING_USERNAME", "Nom d'utilisateur");
+define('WORDING_EMAIL', 'E-mail');
 define("WORDING_YOU_ARE_LOGGED_IN_AS", "Vous êtes connecté en tant que ");
-define('WORDING_LETTER_SUBMIT', 'Submit account');
+define('WORDING_LETTER_SUBMIT', 'Submit account');//@todo translate
