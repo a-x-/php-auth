@@ -41,8 +41,8 @@ define("MESSAGE_VERIFICATION_MAIL_NOT_SENT", "Verification Mail NOT successfully
 define("MESSAGE_VERIFICATION_MAIL_SENT", "Your account has been created successfully and we have sent you an email. Please click the VERIFICATION LINK within that mail.");
 define("MESSAGE_USER_DOES_NOT_EXIST", "This user does not exist");
 define("MESSAGE_USERNAME_BAD_LENGTH", "Username cannot be shorter than 2 or longer than 64 characters");
-define("MESSAGE_USERNAME_CHANGE_FAILED", "Sorry, your chosen username renaming failed");
-define("MESSAGE_USERNAME_CHANGED_SUCCESSFULLY", "Your username has been changed successfully. New username is ");
+define('MESSAGE_USER_PARAM_CHANGED_SUCCESSFULLY', 'Profile successful changed');
+define('MESSAGE_USER_PARAM_CHANGE_FAILED', 'Profile changing is failed!');
 define("MESSAGE_USERNAME_EMPTY", "Username field was empty");
 define("MESSAGE_USERNAME_EXISTS", "Sorry, that username is already taken. Please choose another one.");
 define("MESSAGE_USERNAME_INVALID", "Username does not fit the name scheme: only a-Z and numbers are allowed, 2 to 64 characters");
@@ -76,5 +76,6 @@ define("WORDING_REQUEST_PASSWORD_RESET", "Request a password reset. Enter your u
 define("WORDING_RESET_PASSWORD", "Reset my password");
 define("WORDING_SUBMIT_NEW_PASSWORD", "Submit new password");
 define("WORDING_USERNAME", "Username");
+define('WORDING_EMAIL', 'Email');
 define("WORDING_YOU_ARE_LOGGED_IN_AS", "You are logged in as ");
 define('WORDING_LETTER_SUBMIT', 'Submit account');

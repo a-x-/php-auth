@@ -16,7 +16,7 @@ define('MESSAGE_EMAIL_CHANGE_FAILED', 'Извините, смена e-mail не 
 define('MESSAGE_EMAIL_CHANGED_SUCCESSFULLY', 'E-mail адрес сменён успешно. Ваш новый адрес ');
 define('MESSAGE_EMAIL_EMPTY', 'E-mail не может быть пустым');
 define('MESSAGE_EMAIL_INVALID', 'E-mail адрес не соответствует формату');
-define('MESSAGE_EMAIL_SAME_LIKE_OLD_ONE', 'Новый e-mailадрес не должен совпадать со старым.');
+define('MESSAGE_EMAIL_SAME_LIKE_OLD_ONE', 'Новый e-mail адрес не должен совпадать со старым.');
 define('MESSAGE_EMAIL_TOO_LONG', 'E-mail адрес не может быть длиннее 254 символов');
 define('MESSAGE_LINK_PARAMETER_EMPTY', 'Empty link parameter data.');// @todo decide what is it
 define('MESSAGE_LOGGED_OUT', 'Вы вышли');
@@ -41,8 +41,8 @@ define('MESSAGE_VERIFICATION_MAIL_NOT_SENT', 'Письмо для подтвер
 define('MESSAGE_VERIFICATION_MAIL_SENT', 'Ваш аккаунт успешно создан и вам отправлено письмо подтверждения. Пожалуйста, перейдите по содержащейся в нём ссылке!');
 define('MESSAGE_USER_DOES_NOT_EXIST', 'Пользователь не существует');
 define('MESSAGE_USERNAME_BAD_LENGTH', 'Имя должно быть блинной 2-64 символов');
-define('MESSAGE_USERNAME_CHANGE_FAILED', 'Извините, смена Имени не удалась!');
-define('MESSAGE_USERNAME_CHANGED_SUCCESSFULLY', 'Имя успешно изменёно. Ваш новое Имя ');
+define('MESSAGE_USER_PARAM_CHANGED_SUCCESSFULLY', 'Изменение профиля выполнено успешно');
+define('MESSAGE_USER_PARAM_CHANGE_FAILED', 'Извините, изменение не удалось!');
 define('MESSAGE_USERNAME_EMPTY', 'Поле Имя пусто');
 define('MESSAGE_USERNAME_EXISTS', 'Извините, пользователь с таким Именем уже существует. Пожалуйста, выбирите другое.');
 define('MESSAGE_USERNAME_INVALID', 'Имя должно сожержать латинские символы и цифры и быть блинной 2-64 символов');
@@ -57,7 +57,7 @@ define('WORDING_EDIT_YOUR_CREDENTIALS', 'Вы вошли и можете отр�
 define('WORDING_FORGOT_MY_PASSWORD', 'Я зыбыл пароль');
 define('WORDING_LOGIN', 'Вход');
 define('WORDING_LOGOUT', 'Выход');
-define('WORDING_NEW_EMAIL', 'Новое письмо');
+define('WORDING_NEW_EMAIL', 'Новый e-mail адрес');
 define('WORDING_NEW_PASSWORD', 'Новый пароль');
 define('WORDING_NEW_PASSWORD_REPEAT', 'Повторить пароль');
 define('WORDING_NEW_USERNAME', 'Новое Имя (Имя должно сожержать латинские символы и цифры и быть блинной 2-64 символов)');
@@ -72,9 +72,10 @@ define('WORDING_REGISTRATION_PASSWORD', 'Пароль (мин. 6 символо�
 define('WORDING_REGISTRATION_PASSWORD_REPEAT', 'Повторите пароль');
 define('WORDING_REGISTRATION_USERNAME', 'Имя (От 2 до 64 латинских символов и цифр)');
 define('WORDING_REMEMBER_ME', 'Запомнить меня');
-define('WORDING_REQUEST_PASSWORD_RESET', 'Сбросить пароль. Введите ваше Имя и ждите письмо:');
+define('WORDING_REQUEST_PASSWORD_RESET', 'Сбросить пароль. Введите ваш E-mail и ждите письмо:');
 define('WORDING_RESET_PASSWORD', 'Сбросить пароль');
 define('WORDING_SUBMIT_NEW_PASSWORD', 'Подтвердить изменение пароля');
 define('WORDING_USERNAME', 'Имя');
+define('WORDING_EMAIL', 'Email');
 define('WORDING_YOU_ARE_LOGGED_IN_AS', 'Вы вошли как ');
 define('WORDING_LETTER_SUBMIT', 'Подтвердить');
