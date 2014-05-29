@@ -660,4 +660,40 @@ class PHPLogin
             $result = $query_new_user_insert->execute($params);
         }
     }
+
+
+    /**
+     * ГОВНО :((
+     * проект надо сдавать неделю назад...
+     * @param $user_email
+     * @param $extra
+     * @return mixed
+     */
+    public function writeNewExtraUserDataIntoDB($user_email, $extra)
+    {
+        ;
+        foreach($extra as $extraName => $extraData) {
+            $extraName = preg_replace('![^a-z0-9\-_]!i','',$extraName);
+            $extraData = preg_split('!,!',$extraData);
+            $extraNameNames = ''; $extraNameNamesSemi = ''; $params = [':user_email'=>$user_email];
+            foreach($extraData as &$extraDataEl) {
+                $extraDataEl = preg_split('!:!',$extraDataEl);
+                $extraNameNames .= ','.$extraDataEl[0];
+                $extraNameNamesSemi .= ',:'.$extraDataEl[0];
+                $params[':'.$extraDataEl[0]]=$extraDataEl[1];
+            }
+            // write new users data into database
+            $query_new_user_insert = $this->db_connection->prepare(
+                'INSERT INTO user_extra_'.$extraName.' (
+                   user_email'.$extraNameNames.'
+                ) VALUES(
+                    :user_email'.$extraNameNamesSemi.'
+                )'
+            );
+//            $query_new_user_insert->bindValue(':user_email', $user_email, PDO::PARAM_STR);
+//        $query_new_user_insert->bindValue(':', $user_activation_hash, PDO::PARAM_STR);
+            $result = $query_new_user_insert->execute($params);
+            $result;
+        }
+    }
 }
