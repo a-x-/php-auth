@@ -671,7 +671,6 @@ class PHPLogin
      */
     public function writeNewExtraUserDataIntoDB($user_email, $extra)
     {
-        ;
         foreach($extra as $extraName => $extraData) {
             $extraName = preg_replace('![^a-z0-9\-_]!i','',$extraName);
             $extraData = preg_split('!,!',$extraData);
@@ -684,16 +683,13 @@ class PHPLogin
             }
             // write new users data into database
             $query_new_user_insert = $this->db_connection->prepare(
-                'INSERT INTO user_extra_'.$extraName.' (
-                   user_email'.$extraNameNames.'
+                "INSERT INTO user_extra_$extraName (
+                   user_email $extraNameNames
                 ) VALUES(
-                    :user_email'.$extraNameNamesSemi.'
-                )'
+                    :user_email $extraNameNamesSemi
+                )"
             );
-//            $query_new_user_insert->bindValue(':user_email', $user_email, PDO::PARAM_STR);
-//        $query_new_user_insert->bindValue(':', $user_activation_hash, PDO::PARAM_STR);
             $result = $query_new_user_insert->execute($params);
-            $result;
         }
     }
 }
