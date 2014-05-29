@@ -33,11 +33,12 @@ namespace User\Signup {
      * @param $user_name
      * @param $user_email
      * @param $additionFields
+     * @param $extraFields
      * @internal param $user_password
      * @internal param $user_password_repeat
      * @internal param $captcha
      */
-    function checkPostData($user_name, $user_email, $additionFields)
+    function checkPostData($user_name, $user_email, $additionFields, $extraFields)
     {
         global $login;
         if(!$login->isAllowCurrentUserRegistration()) return;
@@ -87,6 +88,7 @@ namespace User\Signup {
                 // generate random hash for email verification (40 char string)
                 $user_activation_hash = sha1(uniqid(mt_rand(), true));
                 $query_new_user_insert = $login->writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash);
+                $login->writeNewExtraUserDataIntoDB($user_email,$extraFields);
                 if ($query_new_user_insert) {
                     // send a verification email
                     if (\User\Signup\sendVerifyMail($user_email, $user_activation_hash)) {
@@ -159,7 +161,6 @@ namespace User\Signup {
             // try to update user with specified information
             $query_update_user = $login->writeUsersActiveStatusIntoDB($user_email, $user_activation_hash);
             //
-            \Invntrm\_d($query_update_user);
             if ($query_update_user->rowCount() > 0) {
                 if(ALLOW_AUTO_SIGNIN_AFTER_VERIFY){
                     $login->_writeUserDataIntoSession($login->getUserDataFromEmail($user_email));
@@ -173,7 +174,7 @@ namespace User\Signup {
                 );
                 // delete this users account immediately, as we could not send a verification email
                 $login->deleteUser($user_email);
-                header('Location: ' . '/profile/signup/?message=%MESSAGE_REGISTRATION_ACTIVATION_NOT_SUCCESSFUL%');
+                header('Location: ' . '/profile/signup/?error=%MESSAGE_REGISTRATION_ACTIVATION_NOT_SUCCESSFUL%');
             }
         }
     }
@@ -456,7 +457,7 @@ namespace User\Process {
         if (
             $login->REQUEST_PATH_API == '/' && $login->REQUEST_METHOD == 'post'
         ) {
-            \User\Signup\checkPostData($_POST['user_name'], $_POST['user_email'], $_POST["extra"]);
+            \User\Signup\checkPostData($_POST['user_name'], $_POST['user_email'], @$_POST["opt"], @$_POST['extra']);
         }
         else return false;
         return true;
