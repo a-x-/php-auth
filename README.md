@@ -1,11 +1,12 @@
 ## A PHP login script (ADVANCED VERSION)
+**In big restructurization process now. It's not ready for production**
 
 This script is base on [panique/PHP-Login-Advanced](https://github.com/panique/php-login-advanced) who is not maintained anymore.
 And based on [reborn](https://github.com/panique/php-login-advanced/issues/23) fork [devplanete/php-login-advanced](https://github.com/devplanete/php-login-advanced).
 
-A simple, but secure PHP login script with many features includes:
+### A simple, but secure PHP login script with many features includes:
 
-(panique)
+[panique](https://github.com/panique/php-login-advanced)
 - users can register, login, logout (with username or email, password)
 - captcha
 - account verification via mail
@@ -14,21 +15,21 @@ A simple, but secure PHP login script with many features includes:
 - "remember me" / stay logged in cookies
 - gravatars
 
-(devplanete)
+[devplanete](https://github.com/devplanete/php-login-advanced)
 - "remember me" supports parallel login from multiple devices
 - i18n/internationalization: English, French, **Russian (new)** at the moment but it's easy to add a new language
 - possibility to manage some user access levels
 - a beautiful CSS style
 
-(a-x-)
+[a-x-](https://github.com/a-x-/php-login-advanced)
 - parametric signup
 - switchable captcha, password retype, password fields on signup stage
-- separated sample
+- separated sample (not actual now)
 - html and utf-8 mails (verify, reset) instead of plain and iso-8859-1
 - moveable cnfig file
 - ...
 
-IT stuffs...
+### IT stuffs...
 - PDO used for database access
 - mail sending via PHPMailer (**SMTP** or PHP's mail() function/linux sendmail)
 - Uses the ultra-modern & future-proof PHP 5.5.BLOWFISH hashing/salting functions (includes the official PHP 5.3 & PHP 5.4 compatibility pack, which makes those functions available in those versions too)
@@ -41,34 +42,13 @@ IT stuffs...
 
 No live demo page available at the moment
 
-## Requirements (in developing)
+## Requirements
 
-- PHP 5.3.7+
-- MySQL 5 database (please use a modern version of MySQL (5.5, 5.6, 5.7) as very old versions have a exotic bug that
-[makes PDO injections possible](http://stackoverflow.com/q/134099/1114320).
-- activated PHP's GD graphic functions (the tutorial shows how) (if captcha required)
-- enabled OpenSSL module (the tutorial shows how) (if SSL required)
-- this version uses mail sending, so you need to have an **SMTP mail sending account** somewhere OR you know how to get
- **linux's sendmail** etc. to run. As it's nearly impossible to send real mails with PHP's mail() function (due to
- anti-spam blocking of nearly every major mail provider in the world) you should really use SMTP mail sending.
+(in developing)
 
-## Installation (quick setup) (in developing)
+## Installation (quick setup)
 
-* 1. create database *login* and tables *users* and *user_connections* via the SQL statements in the `_installation` folder.
-* 2. in `config/config.php`, change mySQL user and password (*DB_USER* and *DB_PASS*).
-* 3. in `config/config.php`, change *COOKIE_DOMAIN* to your domain name (and don't forget to put the dot in front of the domain!)
-* 4. in `config/config.php`, change *COOKIE_SECRET_KEY* to a random string. this will make your cookies more secure
-* 5. change the URL part of EMAIL_PASSWORDRESET_URL and EMAIL_VERIFICATION_URL in `config/config.php` to your URL!
-     You need to provide the URL of your project here to link to your project from within verification/password reset mails.
-* 6. as this version uses email sending, you'll need to a) provide an SMTP account in the config OR b) install a mail server tool on your server.
-Using a real SMTP provider (like [SMTP2GO](http://www.smtp2go.com/?s=devmetal) etc.) is highly recommended.
- Sending emails manually via mail() is something for hardcore admins.
-Usually mails sent via mail() will never reach the receiver. Please also don't try weird Gmail setups, this can fail to a lot of reasons.
-Get professional and send mails like mail should be sent. It's extremely cheap and works.
-
-- To enable OpenSSL, do `sudo apt-get install openssl` (and restart the apache via `sudo service apache2 restart`)
-- To enable PHP's GD graphic functions, do `sudo apt-get install php5-gd` (and restart the apache via `sudo service apache2 restart`)
-
+(in developing)
 
 ## Troubleshooting & useful stuff
 
