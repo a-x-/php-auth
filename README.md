@@ -1,26 +1,37 @@
 ## A PHP login script (ADVANCED VERSION)
 
-This script is base on [PHP-Login-Advanced](https://github.com/panique/php-login-advanced) who is not maintained anymore.
+This script is base on [panique/PHP-Login-Advanced](https://github.com/panique/php-login-advanced) who is not maintained anymore.
+And based on [reborn](https://github.com/panique/php-login-advanced/issues/23) fork [devplanete/php-login-advanced](https://github.com/devplanete/php-login-advanced).
 
-A simple, but secure PHP login script with many features includes :
+A simple, but secure PHP login script with many features includes:
+
+(panique)
 - users can register, login, logout (with username or email, password)
 - captcha
 - account verification via mail
 - password reset
 - edit user data (password, username, email)
 - "remember me" / stay logged in cookies
-- **"remember me" supports parallel login from multiple devices <- NEW**
-- **i18n/internationalization: English, French at the moment but it's easy to add a new language <- NEW**
-- **possibility to manage some user access levels <- NEW**
-- **a beautiful CSS style <-NEW**
 - gravatars
+
+(devplanete)
+- "remember me" supports parallel login from multiple devices
+- i18n/internationalization: English, French, **Russian (new)** at the moment but it's easy to add a new language
+- possibility to manage some user access levels
+- a beautiful CSS style
+
+(a-x-)
+- parametric signup
+- switchable captcha, password retype, password fields on signup stage
+- separated sample
+- html and utf-8 mails (verify, reset) instead of plain and iso-8859-1
+- moveable cnfig file
+- ...
 
 IT stuffs...
 - PDO used for database access
-- mail sending via PHPMailer (SMTP or PHP's mail() function/linux sendmail)
+- mail sending via PHPMailer (**SMTP** or PHP's mail() function/linux sendmail)
 - Uses the ultra-modern & future-proof PHP 5.5.BLOWFISH hashing/salting functions (includes the official PHP 5.3 & PHP 5.4 compatibility pack, which makes those functions available in those versions too)
-
-You can also visit [Professional MVC Version](https://github.com/panique/php-login) if you look for a MVC Framework Version.
 
 ## Screenshot
 
@@ -30,18 +41,18 @@ You can also visit [Professional MVC Version](https://github.com/panique/php-log
 
 No live demo page available at the moment
 
-## Requirements
+## Requirements (in developing)
 
 - PHP 5.3.7+
 - MySQL 5 database (please use a modern version of MySQL (5.5, 5.6, 5.7) as very old versions have a exotic bug that
 [makes PDO injections possible](http://stackoverflow.com/q/134099/1114320).
-- activated PHP's GD graphic functions (the tutorial shows how)
-- enabled OpenSSL module (the tutorial shows how)
+- activated PHP's GD graphic functions (the tutorial shows how) (if captcha required)
+- enabled OpenSSL module (the tutorial shows how) (if SSL required)
 - this version uses mail sending, so you need to have an **SMTP mail sending account** somewhere OR you know how to get
  **linux's sendmail** etc. to run. As it's nearly impossible to send real mails with PHP's mail() function (due to
  anti-spam blocking of nearly every major mail provider in the world) you should really use SMTP mail sending.
 
-## Installation (quick setup)
+## Installation (quick setup) (in developing)
 
 * 1. create database *login* and tables *users* and *user_connections* via the SQL statements in the `_installation` folder.
 * 2. in `config/config.php`, change mySQL user and password (*DB_USER* and *DB_PASS*).
@@ -58,10 +69,6 @@ Get professional and send mails like mail should be sent. It's extremely cheap a
 - To enable OpenSSL, do `sudo apt-get install openssl` (and restart the apache via `sudo service apache2 restart`)
 - To enable PHP's GD graphic functions, do `sudo apt-get install php5-gd` (and restart the apache via `sudo service apache2 restart`)
 
-## Installation (very detailed setup)
-
-A very detailed guideline on how to install the script
-[here in this blog post](http://www.dev-metal.com/install-php-login-nets-2-advanced-login-script-ubuntu/).
 
 ## Troubleshooting & useful stuff
 
@@ -77,12 +84,6 @@ Have a look here for full explanaition: https://support.google.com/mail/answer/1
 
 2. "SMTP data quota exceeded": gmail blocks you because you have sent more than 500 mails per day (?) or because your users have provided
  too much fake email addresses. The only way to get around this is renting professional SMTP mail sending, prices are okay, 10.000 mails for $5.
-
-## Security notice
-
-This script comes with a handy .htaccess in the views folder that denies direct access to the files within the folder
-(so that people cannot render the views directly). However, these .htaccess files only work if you have set
-`AllowOverride` to `All` in your apache vhost configs. There are lots of tutorials on the web on how to do this.
 
 ## How this script works
 
@@ -103,17 +104,3 @@ If you look into the code and at the file/folder-structure everything should be 
 Licensed under [MIT](http://www.opensource.org/licenses/mit-license.php). You can use this script for free for any
 private or commercial projects.
 
-## Contribute
-
-If you want to add new features etc, please contribute into the https://github.com/devplanete/php-login-advanced repo.
-Please commit only in *develop* branch. The *master* branch will always contain the stable version.
-
-## Support / Donate
-
-If you think this script is useful and saves you a lot of work, then think about supporting the project:
-
-1. Contribute to this project. Feel free to improve this project with your skills.
-
-## Stats
-
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/panique/php-login-advanced/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
