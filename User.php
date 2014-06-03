@@ -30,11 +30,13 @@ namespace User\Signup {
      * 1.
      * handles the entire registration process. checks all error possibilities, and creates a new user in the database if
      * everything is fine
+     *
      * @param $user_name
      * @param $user_email
      * @param $additionFields
      * @param $extraFields
      * @param $linkFields
+     *
      * @internal param $user_password
      * @internal param $user_password_repeat
      * @internal param $captcha
@@ -42,13 +44,13 @@ namespace User\Signup {
     function checkPostData($user_name, $user_email, $additionFields, $extraFields, $linkFields)
     {
         global $login;
-        if(!$login->isAllowCurrentUserRegistration()) return;
+        if (!$login->isAllowCurrentUserRegistration()) return;
         // prevent database flooding
-        $user_name = trim($user_name);
-        $user_email = trim($user_email);
-        $captcha = (isset($additionFields['captcha'])) ? trim($additionFields['captcha']) : '';
+        $user_name            = trim($user_name);
+        $user_email           = trim($user_email);
+        $captcha              = (isset($additionFields['captcha'])) ? trim($additionFields['captcha']) : '';
         $user_password_repeat = (isset($additionFields['user_password_repeat'])) ? trim($additionFields['user_password_repeat']) : '';
-        $user_password_new = (isset($additionFields['user_password_new'])) ? trim($additionFields['user_password_new']) : '';
+        $user_password_new    = (isset($additionFields['user_password_new'])) ? trim($additionFields['user_password_new']) : '';
         //
         // check provided data validity
         if (!ALLOW_NO_CAPTCHA && strtolower($captcha) != strtolower($_SESSION['captcha'])) {
@@ -87,9 +89,9 @@ namespace User\Signup {
                 // crypt the user's password with the PHP 5.5's password_hash() function.
                 $user_password_hash = $login->getPasswordHash($user_password_new);
                 // generate random hash for email verification (40 char string)
-                $user_activation_hash = sha1(uniqid(mt_rand(), true));
+                $user_activation_hash  = sha1(uniqid(mt_rand(), true));
                 $query_new_user_insert = $login->writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash);
-                $login->writeNewExtraUserDataIntoDB($user_email,$extraFields,$linkFields);
+                $login->writeNewExtraUserDataIntoDB($user_email, $extraFields, $linkFields);
                 if ($query_new_user_insert) {
                     // send a verification email
                     if (\User\Signup\sendVerifyMail($user_email, $user_activation_hash)) {
@@ -105,8 +107,8 @@ namespace User\Signup {
                 }
             }
         }
-        $messages = $login->errors+$login->messages;
-        $messagesStr = join('|',$messages);
+        $messages    = $login->errors + $login->messages;
+        $messagesStr = join('|', $messages);
         header('Location: /profile/signup/sent/?messages=' . $messagesStr);
     }
 
@@ -120,7 +122,7 @@ namespace User\Signup {
         global $login;
         $mail = $login->getPHPMailerObject();
         //
-        $mail->From = EMAIL_VERIFICATION_FROM;
+        $mail->From     = EMAIL_VERIFICATION_FROM;
         $mail->FromName = EMAIL_VERIFICATION_FROM_NAME;
         $mail->AddAddress($user_email);
         $mail->Subject = EMAIL_VERIFICATION_SUBJECT;
@@ -145,6 +147,7 @@ namespace User\Signup {
     /**
      * 3.
      * checks the id/verification code combination and set the user's activation status to true (=1) in the database
+     *
      * @param $user_email
      * @param $user_activation_hash
      */
@@ -163,7 +166,7 @@ namespace User\Signup {
             $query_update_user = $login->writeUsersActiveStatusIntoDB($user_email, $user_activation_hash);
             //
             if ($query_update_user->rowCount() > 0) {
-                if(ALLOW_AUTO_SIGNIN_AFTER_VERIFY){
+                if (ALLOW_AUTO_SIGNIN_AFTER_VERIFY) {
                     $login->_writeUserDataIntoSession($login->getUserDataFromEmail($user_email));
                 }
                 header('Location: ' . '/profile/?message=%MESSAGE_REGISTRATION_ACTIVATION_SUCCESSFUL%');
@@ -187,119 +190,121 @@ namespace User\Signup {
  * @deprecated
  */
 namespace User\Reset {
-/**
- * @deprecated
- * @todo довести
- * 1.
- * Sets a random token into the database (that will verify the user when he/she comes back via the link
- * in the email) and sends the according email.
- */
-function checkPostData($user_email)
-{
-    global $login;
-    $user_email = trim($user_email);
-    //
-    if (empty($user_email)) {
-        $login->errors[] = MESSAGE_USERNAME_EMPTY;
-    } else {
-        // generate timestamp (to see when exactly the user (or an attacker) requested the password reset mail)
-        // btw this is an integer ;)
-        $temporary_timestamp = time();
-        // generate random hash for email password reset verification (40 char string)
-        $user_password_reset_hash = sha1(uniqid(mt_rand(), true));
-        // database query, getting all the info of the selected user
-        $result_row = $login->getUserDataFromEmail($user_email);
+    /**
+     * @deprecated
+     * @todo довести
+     * 1.
+     * Sets a random token into the database (that will verify the user when he/she comes back via the link
+     * in the email) and sends the according email.
+     */
+    function checkPostData($user_email)
+    {
+        global $login;
+        $user_email = trim($user_email);
         //
-        // if this user exists
-        if (isset($result_row->user_id)) {
-            //
-            // store his password_reset_hash in the DB
-            $query_update = $login->writeUsersPasswordResetTempHashIntoDB($user_password_reset_hash, $temporary_timestamp, $user_email);
-            //
-            // check if exactly one row was successfully changed:
-            if ($query_update->rowCount() == 1) {
-                // send a mail to the user, containing a link with that token hash string
-                \User\Reset\sendVerifyMail($result_row->email, $user_password_reset_hash);
-                return true;
-            } else {
-                $login->errors[] = MESSAGE_DATABASE_ERROR;
-            }
+        if (empty($user_email)) {
+            $login->errors[] = MESSAGE_USERNAME_EMPTY;
         } else {
-            $login->errors[] = MESSAGE_USER_DOES_NOT_EXIST;
+            // generate timestamp (to see when exactly the user (or an attacker) requested the password reset mail)
+            // btw this is an integer ;)
+            $temporary_timestamp = time();
+            // generate random hash for email password reset verification (40 char string)
+            $user_password_reset_hash = sha1(uniqid(mt_rand(), true));
+            // database query, getting all the info of the selected user
+            $result_row = $login->getUserDataFromEmail($user_email);
+            //
+            // if this user exists
+            if (isset($result_row->user_id)) {
+                //
+                // store his password_reset_hash in the DB
+                $query_update = $login->writeUsersPasswordResetTempHashIntoDB($user_password_reset_hash, $temporary_timestamp, $user_email);
+                //
+                // check if exactly one row was successfully changed:
+                if ($query_update->rowCount() == 1) {
+                    // send a mail to the user, containing a link with that token hash string
+                    \User\Reset\sendVerifyMail($result_row->email, $user_password_reset_hash);
+                    return true;
+                } else {
+                    $login->errors[] = MESSAGE_DATABASE_ERROR;
+                }
+            } else {
+                $login->errors[] = MESSAGE_USER_DOES_NOT_EXIST;
+            }
         }
-    }
-    // return false (this method only returns true when the database entry has been set successfully)
-    return false;
-}
-
-
-/**
- * 2.
- * Sends the password-reset-email.
- * @param $user_email
- * @param $user_password_reset_hash
- * @return bool
- */
-function sendVerifyMail($user_email, $user_password_reset_hash)
-{
-    global $login;
-    $mail = $login->getPHPMailerObject();
-    $mail->From = EMAIL_PASSWORDRESET_FROM;
-    $mail->FromName = EMAIL_PASSWORDRESET_FROM_NAME;
-    $mail->AddAddress($user_email);
-    $mail->Subject = EMAIL_PASSWORDRESET_SUBJECT;
-    //
-    $link = 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'] . '?password_reset';
-    $link .= '&user_email=' . urlencode($user_email) . '&verification_code=' . urlencode($user_password_reset_hash);
-    if (EMAIL_BODY_TYPE == 'html') {
-        $link = "<a href='$link'>" . WORDING_LETTER_SUBMIT . "</a>";
-    }
-    $mail->Body = \Invntrm\specifyTemplate(EMAIL_PASSWORDRESET_CONTENT, ['link' => $link]);
-    //
-    if (!$mail->Send()) {
-        $login->errors[] = MESSAGE_PASSWORD_RESET_MAIL_FAILED . $mail->ErrorInfo;
+        // return false (this method only returns true when the database entry has been set successfully)
         return false;
-    } else {
-        $login->messages[] = MESSAGE_PASSWORD_RESET_MAIL_SUCCESSFULLY_SENT;
-        return true;
     }
-}
 
 
-
-/**
- * @deprecated
- * @todo довести
- * 3.
- * Checks if the verification string in the account verification mail is valid and matches to the user.
- * @param $user_email
- * @param $verification_code
- */
-function verifyMailCode($user_email, $verification_code)
-{
-    global $login;
-    $user_email = trim($user_email);
-    if (empty($user_email) || empty($verification_code)) {
-        $login->errors[] = MESSAGE_LINK_PARAMETER_EMPTY;
-    } else {
-        // database query, getting all the info of the selected user
-        $result_row = $login->getUserDataFromEmail($user_email);
+    /**
+     * 2.
+     * Sends the password-reset-email.
+     *
+     * @param $user_email
+     * @param $verification_code
+     *
+     * @return bool
+     */
+    function sendVerifyMail($user_email, $verification_code)
+    {
+        global $login;
+        $mail           = $login->getPHPMailerObject();
+        $mail->From     = EMAIL_PASSWORDRESET_FROM;
+        $mail->FromName = EMAIL_PASSWORDRESET_FROM_NAME;
+        $mail->AddAddress($user_email);
+        $mail->Subject = EMAIL_PASSWORDRESET_SUBJECT;
         //
-        // if this user exists and have the same hash in database
-        if (isset($result_row->user_id) && $result_row->user_password_reset_hash == $verification_code) {
-            $timestamp_one_hour_ago = time() - 3600; // 3600 seconds are 1 hour
-            //
-            if ($result_row->user_password_reset_timestamp > $timestamp_one_hour_ago) {
-                // set the marker to true, making it possible to show the password reset edit form view
-                $login->password_reset_link_is_valid = true;
-            } else {
-                $login->errors[] = MESSAGE_RESET_LINK_HAS_EXPIRED;
-            }
+        $link = 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'] . '?password_reset&'
+            . http_build_query(['user_email' => $user_email, 'verification_code' => $verification_code]);
+        if (EMAIL_BODY_TYPE == 'html') {
+            $link = "<a href='$link'>" . WORDING_LETTER_SUBMIT . "</a>";
+        }
+        $mail->Body = \Invntrm\specifyTemplate(EMAIL_PASSWORDRESET_CONTENT, ['link' => $link]);
+        //
+        if (!$mail->Send()) {
+            $login->errors[] = MESSAGE_PASSWORD_RESET_MAIL_FAILED . $mail->ErrorInfo;
+            return false;
         } else {
-            $login->errors[] = MESSAGE_USER_DOES_NOT_EXIST;
+            $login->messages[] = MESSAGE_PASSWORD_RESET_MAIL_SUCCESSFULLY_SENT;
+            return true;
         }
     }
-}
+
+
+    /**
+     * @deprecated
+     * @todo довести
+     * 3.
+     * Checks if the verification string in the account verification mail is valid and matches to the user.
+     *
+     * @param $user_email
+     * @param $verification_code
+     */
+    function verifyMailCode($user_email, $verification_code)
+    {
+        global $login;
+        $user_email = trim($user_email);
+        if (empty($user_email) || empty($verification_code)) {
+            $login->errors[] = MESSAGE_LINK_PARAMETER_EMPTY;
+        } else {
+            // database query, getting all the info of the selected user
+            $result_row = $login->getUserDataFromEmail($user_email);
+            //
+            // if this user exists and have the same hash in database
+            if (isset($result_row->user_id) && $result_row->user_password_reset_hash == $verification_code) {
+                $timestamp_one_hour_ago = time() - 3600; // 3600 seconds are 1 hour
+                //
+                if ($result_row->user_password_reset_timestamp > $timestamp_one_hour_ago) {
+                    // set the marker to true, making it possible to show the password reset edit form view
+                    $login->password_reset_link_is_valid = true;
+                } else {
+                    $login->errors[] = MESSAGE_RESET_LINK_HAS_EXPIRED;
+                }
+            } else {
+                $login->errors[] = MESSAGE_USER_DOES_NOT_EXIST;
+            }
+        }
+    }
 
 
     /**
@@ -307,40 +312,41 @@ function verifyMailCode($user_email, $verification_code)
      * @todo довести
      * 4.
      * Checks and writes the new password.
+     *
      * @param $user_email
      * @param $user_password_reset_verify_code
      * @param $user_password_new
      * @param $user_password_repeat
      */
-function writeNewPassword($user_email, $user_password_reset_verify_code, $user_password_new, $user_password_repeat)
-{
-    global $login;
-    // TODO: timestamp!
-    $user_email = trim($user_email);
-    //
-    if (empty($user_email) || empty($user_password_reset_verify_code) || empty($user_password_new) || empty($user_password_repeat)) {
-        $login->errors[] = MESSAGE_PASSWORD_EMPTY;
-        // is the repeat password identical to password
-    } else if ($user_password_new !== $user_password_repeat) {
-        $login->errors[] = MESSAGE_PASSWORD_BAD_CONFIRM;
-        // password need to have a minimum length of 6 characters
-    } else if (strlen($user_password_new) < 6) {
-        $login->errors[] = MESSAGE_PASSWORD_TOO_SHORT;
-        // if database connection opened
-    } else if ($login->databaseConnection()) {
-        // crypt the user's password with the PHP 5.5's password_hash() function.
-        $user_password_hash = $login->getPasswordHash($user_password_new);
-        $query_update = $login->writeUsersNewHashIntoDB($user_password_hash, $user_password_reset_verify_code, $user_email);
+    function writeNewPassword($user_email, $user_password_reset_verify_code, $user_password_new, $user_password_repeat)
+    {
+        global $login;
+        // TODO: timestamp!
+        $user_email = trim($user_email);
         //
-        // check if exactly one row was successfully changed:
-        if ($query_update->rowCount() == 1) {
-            $login->password_reset_was_successful = true;
-            $login->messages[] = MESSAGE_PASSWORD_CHANGED_SUCCESSFULLY;
-        } else {
-            $login->errors[] = MESSAGE_PASSWORD_CHANGE_FAILED;
+        if (empty($user_email) || empty($user_password_reset_verify_code) || empty($user_password_new) || empty($user_password_repeat)) {
+            $login->errors[] = MESSAGE_PASSWORD_EMPTY;
+            // is the repeat password identical to password
+        } else if ($user_password_new !== $user_password_repeat) {
+            $login->errors[] = MESSAGE_PASSWORD_BAD_CONFIRM;
+            // password need to have a minimum length of 6 characters
+        } else if (strlen($user_password_new) < 6) {
+            $login->errors[] = MESSAGE_PASSWORD_TOO_SHORT;
+            // if database connection opened
+        } else if ($login->databaseConnection()) {
+            // crypt the user's password with the PHP 5.5's password_hash() function.
+            $user_password_hash = $login->getPasswordHash($user_password_new);
+            $query_update       = $login->writeUsersNewHashIntoDB($user_password_hash, $user_password_reset_verify_code, $user_email);
+            //
+            // check if exactly one row was successfully changed:
+            if ($query_update->rowCount() == 1) {
+                $login->password_reset_was_successful = true;
+                $login->messages[]                    = MESSAGE_PASSWORD_CHANGED_SUCCESSFULLY;
+            } else {
+                $login->errors[] = MESSAGE_PASSWORD_CHANGE_FAILED;
+            }
         }
     }
-}
 
 }
 
@@ -349,6 +355,7 @@ namespace User\Edit {
      * @deprecated
      * @todo довести
      * Edit the user's name, provided in the editing form
+     *
      * @param $user_name
      */
     function name($user_name)
@@ -407,8 +414,8 @@ namespace User\Edit {
     function password($user_password)
     {
         global $login;
-        $user_password_old = $user_password['old'];
-        $user_password_new = $user_password['new'];
+        $user_password_old    = $user_password['old'];
+        $user_password_new    = $user_password['new'];
         $user_password_repeat = $user_password['repeat'];
         if (empty($user_password_new) || empty($user_password_repeat) || empty($user_password_old)) {
             $login->errors[] = MESSAGE_PASSWORD_EMPTY;
@@ -438,7 +445,6 @@ namespace User\Edit {
 }
 
 
-
 namespace User\Process {
 
     /**
@@ -446,7 +452,9 @@ namespace User\Process {
      * check the possible REGISTER actions:
      * 1.  register new user
      * 2.  verification new user
+     *
      * @param $login \PHPLogin
+     *
      * @return bool
      */
     function signup($login)
@@ -458,13 +466,13 @@ namespace User\Process {
             $login->REQUEST_PATH_API == '/' && $login->REQUEST_METHOD == 'post'
         ) {
             \User\Signup\checkPostData($_POST['user_name'], $_POST['user_email'], @$_POST["opt"], @$_POST['extra'], @$_POST['link']);
-        }
-        else return false;
+        } else return false;
         return true;
     }
 
     /**
      * @param $login \PHPLogin
+     *
      * @return bool
      */
     function verify($login)
@@ -488,7 +496,9 @@ namespace User\Process {
      *     After the user has submit his login/password successfully, his
      *     logged-in-status is written into his session data on the server.
      *     This is the typical behaviour of common login scripts.
+     *
      * @param $login \PHPLogin
+     *
      * @return bool
      */
     function signin($login)
@@ -515,23 +525,21 @@ namespace User\Process {
         //
         // 1.3.
         // checking if user requested a password reset mail
-            if (
-                $login->REQUEST_PATH_API == '/' && $login->REQUEST_METHOD == 'put'
-                && isset($_REQUEST['password'])
-            ) {
-                \User\Reset\checkPostData(@$_REQUEST['user_email']);
-            }
-            elseif (isset($_REQUEST["user_email"]) && isset($_REQUEST["code"])) {
-                \User\Reset\verifyMailCode($_REQUEST["user_email"], $_REQUEST["code"]);
-            }
-            elseif (isset($_POST["submit_new_password"])) {
-                \User\Reset\writeNewPassword(
-                    $_REQUEST['user_email'],
-                    $_REQUEST['verification_code'],
-                    $_REQUEST['user_password_new'],
-                    $_REQUEST['user_password_repeat']
-                );
-            }
+        if (
+            $login->REQUEST_PATH_API == '/' && $login->REQUEST_METHOD == 'put'
+            && isset($_REQUEST['password'])
+        ) {
+            \User\Reset\checkPostData(@$_REQUEST['user_email']);
+        } elseif (isset($_REQUEST["user_email"]) && isset($_REQUEST["code"])) {
+            \User\Reset\verifyMailCode($_REQUEST["user_email"], $_REQUEST["code"]);
+        } elseif (isset($_POST["submit_new_password"])) {
+            \User\Reset\writeNewPassword(
+                $_REQUEST['user_email'],
+                $_REQUEST['verification_code'],
+                $_REQUEST['user_password_new'],
+                $_REQUEST['user_password_repeat']
+            );
+        }
         return true;
     }
 
@@ -550,11 +558,10 @@ namespace User\Process {
             $login->REQUEST_PATH_API == '/' && $login->REQUEST_METHOD == 'put'
         ) {
             // function below uses $_SESSION['user_id'] et $_SESSION['user_email']
-            if (!empty($_REQUEST['user_name']) ) \User\Edit\name($_POST['user_name']);
-            if (!empty($_REQUEST['user_email']) ) \User\Edit\email($_POST['user_email']);
-            if (!empty($_REQUEST['user_password']) ) \User\Edit\password($_POST['user_password']);
-        }
-        else return false;
+            if (!empty($_REQUEST['user_name'])) \User\Edit\name($_POST['user_name']);
+            if (!empty($_REQUEST['user_email'])) \User\Edit\email($_POST['user_email']);
+            if (!empty($_REQUEST['user_password'])) \User\Edit\password($_POST['user_password']);
+        } else return false;
         return true;
     }
 
@@ -574,8 +581,7 @@ namespace User\Process {
             $login->REQUEST_PATH_API == '/signin' && $login->REQUEST_METHOD == 'delete'
         ) {
             \User\Logout();
-        }
-        else return false;
+        } else return false;
         return true;
     }
 }
