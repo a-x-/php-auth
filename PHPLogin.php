@@ -194,24 +194,6 @@ class PHPLogin
     }
 
     /**
-     * Crypt the $password with the PHP 5.5's password_hash()
-     * @param $password string
-     * @return bool|false|string - 60 character hash password string
-     */
-    public function getPasswordHash($password)
-    {
-        // check if we have a constant HASH_COST_FACTOR defined (in config/config.php),
-        // if so: put the value into $hash_cost_factor, if not, make $hash_cost_factor = null
-        $hash_cost_factor = (defined('HASH_COST_FACTOR') ? HASH_COST_FACTOR : null);
-
-        // crypt the user's password with the PHP 5.5's password_hash() function, results in a 60 character hash string
-        // the PASSWORD_DEFAULT constant is defined by the PHP 5.5, or if you are using PHP 5.3/5.4, by the password hashing
-        // compatibility library. the third parameter looks a little bit shitty, but that's how those PHP 5.5 functions
-        // want the parameter: as an array with, currently only used with 'cost' => XX.
-        return password_hash($password, PASSWORD_DEFAULT, array('cost' => $hash_cost_factor));
-    }
-
-    /**
      * Create a PHPMailer Object with configuration of config.php
      * @return PHPMailer Object
      */
@@ -399,6 +381,10 @@ class PHPLogin
                 }
             }
         }
+        header('Location: /profile/?logged-in'
+            . ($this->errors ? '&errors=' . join('|',$this->errors) : '')
+            . ($this->messages ? '&messages=' . join('|',$this->messages) : '')
+        );
     }
 
     /**
@@ -589,75 +575,107 @@ class PHPLogin
      */
     public function writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash)
     {
-//
         // write new users data into database
-        $query_new_user_insert = $this->db_connection->prepare(
-            'INSERT INTO user (
-                user_name,  user_password_hash,  email,  user_activation_hash,  user_registration_ip,  user_registration_datetime
-            ) VALUES(
-                :user_name, :user_password_hash, :user_email, :user_activation_hash, :user_registration_ip, now()
-            )'
+        require_once "$_SERVER[DOCUMENT_ROOT]/vendor/a-x-/invntrm-common-php/Mq.php";
+        return (new \Mq())->newR(
+            'user[user_name=*,email=*,user_password_hash=*,user_activation_hash=*,user_registration_ip=*]>'
+            ,'sssss'
+            ,[$user_name, $user_email, $user_password_hash, $user_activation_hash,$_SERVER['REMOTE_ADDR']]
         );
-        $query_new_user_insert->bindValue(':user_name', $user_name, PDO::PARAM_STR);
-        $query_new_user_insert->bindValue(':user_password_hash', $user_password_hash, PDO::PARAM_STR);
-        $query_new_user_insert->bindValue(':user_email', $user_email, PDO::PARAM_STR);
-        $query_new_user_insert->bindValue(':user_activation_hash', $user_activation_hash, PDO::PARAM_STR);
-        $query_new_user_insert->bindValue(':user_registration_ip', $_SERVER['REMOTE_ADDR'], PDO::PARAM_STR);
-        $query_new_user_insert->execute();
-        return $query_new_user_insert;
+    }
+
+    /**
+     * Crypt the $password with the PHP 5.5's password_hash()
+     * @param $password string
+     * @return bool|false|string - 60 character hash password string
+     */
+    public function getPasswordHash($password)
+    {
+        // check if we have a constant HASH_COST_FACTOR defined (in config/config.php),
+        // if so: put the value into $hash_cost_factor, if not, make $hash_cost_factor = null
+        $hash_cost_factor = (defined('HASH_COST_FACTOR') ? HASH_COST_FACTOR : null);
+        // crypt the user's password with the PHP 5.5's password_hash() function, results in a 60 character hash string
+        // the PASSWORD_DEFAULT constant is defined by the PHP 5.5, or if you are using PHP 5.3/5.4, by the password hashing
+        // compatibility library. the third parameter looks a little bit shitty, but that's how those PHP 5.5 functions
+        // want the parameter: as an array with, currently only used with 'cost' => XX.
+        return password_hash($password, PASSWORD_DEFAULT, array('cost' => $hash_cost_factor));
     }
 
     /**
      * @param $paramValue
      * @param $paramNameUntrusted
+     * @return bool
      */
     function writeUserParamIntoDB($paramValue, $paramNameUntrusted)
     {
         $paramName = preg_replace('![^a-z0-9_-]!i', '', $paramNameUntrusted);
         $query_edit_user_name = $this->db_connection->prepare(
-            'UPDATE user SET $paramName = :$paramName WHERE user_id = :user_id'
+            "UPDATE user SET $paramName = :$paramName WHERE user_id = :user_id"
         );
-        $query_edit_user_name->bindValue(":$paramName", $paramValue, PDO::PARAM_STR);
-        $query_edit_user_name->bindValue(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
-        $query_edit_user_name->execute();
+        $query_edit_user_name->execute([":$paramName"=>$paramValue,':user_id'=>$_SESSION['user_id']]);
         //
         if ($query_edit_user_name->rowCount()) {
             $_SESSION[$paramName] = $paramValue;
             $this->messages[] = MESSAGE_USER_PARAM_CHANGED_SUCCESSFULLY . $paramValue;
+            return true;
         } else {
             $this->errors[] = MESSAGE_USER_PARAM_CHANGE_FAILED;
         }
+        return false;
+    }
+
+    /**
+     *
+     * @param $user_password_new
+     * @return bool
+     */
+    function writeNewPasswordIntoDB($user_password_new)
+    {
+        //
+        // crypt the new user's password with the PHP 5.5's password_hash() function
+        $user_password_hash = $this->getPasswordHash($user_password_new);
+        //
+        // write users new hash into database
+        return $this->writeUserParamIntoDB($user_password_hash, 'user_password_hash');
     }
 
 
     /**
-     * ГОВНО :((
+     * это ГОВНО :((
      * проект надо сдавать неделю назад...
      * @param $user_email
      * @param $extra
+     * @param $link
      * @return mixed
      */
-    public function writeNewExtraUserDataIntoDB($user_email, $extra)
+    public function writeNewExtraUserDataIntoDB($user_email, $extra, $link)
     {
+        require_once "$_SERVER[DOCUMENT_ROOT]/vendor/a-x-/invntrm-common-php/Mq.php";
+        //
+        // Insert extra data into linked table `origin_extra_{name}`
+        // (link by `user_extra_{name}` table)
         foreach($extra as $extraName => $extraData) {
             $extraName = preg_replace('![^a-z0-9\-_]!i','',$extraName);
             $extraData = preg_split('!,!',$extraData);
-            $extraNameNames = ''; $extraNameNamesSemi = ''; $params = [':user_email'=>$user_email];
-            foreach($extraData as &$extraDataEl) {
+            $extraNameNames = []; $params = [];// $params = [':user_email'=>$user_email];
+            foreach($extraData as $extraDataEl) {
                 $extraDataEl = preg_split('!:!',$extraDataEl);
-                $extraNameNames .= ','.$extraDataEl[0];
-                $extraNameNamesSemi .= ',:'.$extraDataEl[0];
-                $params[':'.$extraDataEl[0]]=$extraDataEl[1];
+                $extraNameNames[]= $extraDataEl[0];
+                $params[]=$extraDataEl[1];
             }
+            $extraNameNames = join(',',$extraNameNames);
+            //
             // write new users data into database
-            $query_new_user_insert = $this->db_connection->prepare(
-                "INSERT INTO user_extra_$extraName (
-                   user_email $extraNameNames
-                ) VALUES(
-                    :user_email $extraNameNamesSemi
-                )"
-            );
-            $result = $query_new_user_insert->execute($params);
+            (new \Mq())->newR("origin_extra_{$extraName}[$extraNameNames]>",str_repeat('s',\Invntrm\true_count($params)),$params);
+            (new \Mq())->newR("user_extra_{$extraName}[user_email=*,origin_extra_{$extraName}_id=*]>",'si',[$user_email]);
+        }
+        //
+        // Add link with `{name}` table
+        // (link by `user_link_{name})` table
+        foreach($link as $linkName => $linkValue) {
+            $linkName = preg_replace('![^a-z0-9\-_]!i','',$linkName);
+            $event_id = (new \Mq())->newR("{$linkName}['$linkValue']?id");
+            (new \Mq())->newR("user_link_{$linkName}[{$linkName}_id=*,user_email=*]>",'is',[$event_id,$user_email]);
         }
     }
 }

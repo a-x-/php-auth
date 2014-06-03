@@ -34,11 +34,12 @@ namespace User\Signup {
      * @param $user_email
      * @param $additionFields
      * @param $extraFields
+     * @param $linkFields
      * @internal param $user_password
      * @internal param $user_password_repeat
      * @internal param $captcha
      */
-    function checkPostData($user_name, $user_email, $additionFields, $extraFields)
+    function checkPostData($user_name, $user_email, $additionFields, $extraFields, $linkFields)
     {
         global $login;
         if(!$login->isAllowCurrentUserRegistration()) return;
@@ -88,7 +89,7 @@ namespace User\Signup {
                 // generate random hash for email verification (40 char string)
                 $user_activation_hash = sha1(uniqid(mt_rand(), true));
                 $query_new_user_insert = $login->writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash);
-                $login->writeNewExtraUserDataIntoDB($user_email,$extraFields);
+                $login->writeNewExtraUserDataIntoDB($user_email,$extraFields,$linkFields);
                 if ($query_new_user_insert) {
                     // send a verification email
                     if (\User\Signup\sendVerifyMail($user_email, $user_activation_hash)) {
@@ -301,19 +302,23 @@ function verifyMailCode($user_email, $verification_code)
 }
 
 
-/**
- * @deprecated
- * @todo довести
- * 4.
- * Checks and writes the new password.
- */
-function writeNewPassword($user_email, $user_password_reset_hash, $user_password_new, $user_password_repeat)
+    /**
+     * @deprecated
+     * @todo довести
+     * 4.
+     * Checks and writes the new password.
+     * @param $user_email
+     * @param $user_password_reset_verify_code
+     * @param $user_password_new
+     * @param $user_password_repeat
+     */
+function writeNewPassword($user_email, $user_password_reset_verify_code, $user_password_new, $user_password_repeat)
 {
     global $login;
     // TODO: timestamp!
     $user_email = trim($user_email);
     //
-    if (empty($user_email) || empty($user_password_reset_hash) || empty($user_password_new) || empty($user_password_repeat)) {
+    if (empty($user_email) || empty($user_password_reset_verify_code) || empty($user_password_new) || empty($user_password_repeat)) {
         $login->errors[] = MESSAGE_PASSWORD_EMPTY;
         // is the repeat password identical to password
     } else if ($user_password_new !== $user_password_repeat) {
@@ -325,7 +330,7 @@ function writeNewPassword($user_email, $user_password_reset_hash, $user_password
     } else if ($login->databaseConnection()) {
         // crypt the user's password with the PHP 5.5's password_hash() function.
         $user_password_hash = $login->getPasswordHash($user_password_new);
-        $query_update = $login->writeUsersNewHashIntoDB($user_password_hash, $user_password_reset_hash, $user_email);
+        $query_update = $login->writeUsersNewHashIntoDB($user_password_hash, $user_password_reset_verify_code, $user_email);
         //
         // check if exactly one row was successfully changed:
         if ($query_update->rowCount() == 1) {
@@ -424,12 +429,7 @@ namespace User\Edit {
             elseif (!password_verify($user_password_old, $result_row->user_password_hash)) {
                 $login->errors[] = MESSAGE_OLD_PASSWORD_WRONG;
             } else {
-                //
-                // crypt the new user's password with the PHP 5.5's password_hash() function
-                $user_password_hash = $login->getPasswordHash($user_password_new);
-                //
-                // write users new hash into database
-                $login->writeUserParamIntoDB($user_password_hash, 'user_password_hash');
+                $login->writeNewPasswordIntoDB($user_password_new);
             }
 
         }
@@ -457,7 +457,7 @@ namespace User\Process {
         if (
             $login->REQUEST_PATH_API == '/' && $login->REQUEST_METHOD == 'post'
         ) {
-            \User\Signup\checkPostData($_POST['user_name'], $_POST['user_email'], @$_POST["opt"], @$_POST['extra']);
+            \User\Signup\checkPostData($_POST['user_name'], $_POST['user_email'], @$_POST["opt"], @$_POST['extra'], @$_POST['link']);
         }
         else return false;
         return true;
