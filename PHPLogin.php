@@ -63,7 +63,7 @@ class PHPLogin
         $user_lang = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, 2);
         // if translation file for the detected language doesn't exist, we use default english file
         $getTranslationFilePath = function ($lang) {
-            return __DIR__ . "/translations/$lang.php";//$_SERVER[DOCUMENT_ROOT]/
+            return "$_SERVER[DOCUMENT_ROOT]/translations/$lang.php";//$_SERVER[DOCUMENT_ROOT]/
         };
         if (!file_exists($getTranslationFilePath($user_lang))) {
             $user_lang = 'en';
