@@ -63,7 +63,7 @@ define('WORDING_NEW_PASSWORD_REPEAT', 'Повторить пароль');
 define('WORDING_NEW_USERNAME', 'Новое Имя (Имя должно сожержать латинские символы и цифры и быть блинной 2-64 символов)');
 define('WORDING_OLD_PASSWORD', 'Ваш старый пароль');
 define('WORDING_PASSWORD', 'Пароль');
-define('WORDING_PROFILE_PICTURE', 'Ваше изображение (Gravatar):');
+define('WORDING_PROFILE_PICTURE', 'Gravatar:');
 define('WORDING_REGISTER', 'Регистрация');
 define('WORDING_REGISTER_NEW_ACCOUNT', 'Зарегистрировать новый аккаунт');
 define('WORDING_REGISTRATION_CAPTCHA', 'Введите пожалуйста символы с изображения');
@@ -79,3 +79,7 @@ define('WORDING_USERNAME', 'Имя');
 define('WORDING_EMAIL', 'Email');
 define('WORDING_YOU_ARE_LOGGED_IN_AS', 'Вы вошли как ');
 define('WORDING_LETTER_SUBMIT', 'Подтвердить');
+
+//
+// Yandex money
+define('NOT_ENOUGH_FUNDS', 'Недостаточно средств');
