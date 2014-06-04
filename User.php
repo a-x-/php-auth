@@ -25,6 +25,121 @@ namespace User {
 
 } // User
 
+namespace User\Signin {
+    use YandexMoney\Exception\Exception;
+
+    /**
+     * @todo move to `User` namespace
+     * Logs in with the data provided in $_POST, coming from the login form
+     *
+     * @param $user_email
+     * @param $user_password
+     * @param $user_rememberme
+     */
+    function signin($user_email, $user_password, $user_rememberme)
+    {
+        global $login;
+        $next_state  = 'check';
+        $user_object = [];
+        while (true) switch ($next_state) {
+            case('check'):
+                $next_state = 'exit';
+                if (!\User\Signin\check($user_email, $user_password)) break;
+                $next_state = 'ok';
+                break;
+            case('ok'):
+                $next_state = 'exit';
+                if (!\User\Signin\ok($user_object, $user_password, $user_rememberme)) break;
+                break;
+            case('exit'):
+                header('Location: /profile/?logged-in'
+                    . ($login->errors ? '&errors=' . join('|', $login->errors) : '')
+                    . ($login->messages ? '&messages=' . join('|', $login->messages) : '')
+                );
+                return;
+        }
+    }
+
+    function check($user_email, $user_password)
+    {
+        global $login;
+        while (true) {
+            $user_email = trim($user_email);
+            if (empty($user_password)) {
+                $login->errors[] = MESSAGE_PASSWORD_EMPTY;
+                // if POST data (from login form) contains non-empty user_email and non-empty user_password
+                break;
+            }
+            if (empty($user_email) || !filter_var($user_email, FILTER_VALIDATE_EMAIL)) {
+                $login->errors[] = MESSAGE_EMAIL_INVALID;
+                break;
+            }
+            //
+            // database query, getting all the info of the selected user
+            $user_object = $login->getUserDataFromEmail($user_email);
+            //
+            // if this user not exists
+            if (!isset($user_object->user_id)) {
+                // was MESSAGE_USER_DOES_NOT_EXIST before, but has changed to MESSAGE_LOGIN_FAILED
+                // to prevent potential attackers showing if the user exists
+                $login->errors[] = MESSAGE_LOGIN_FAILED;
+                break;
+            }
+            if ($user_object->user_active != 1) {
+                $login->errors[] = MESSAGE_ACCOUNT_NOT_ACTIVATED;
+                break;
+            }
+            if (($user_object->user_failed_logins >= 3) && ($user_object->user_last_failed_login > (time() - 30))) {
+                $login->errors[] = MESSAGE_PASSWORD_WRONG_3_TIMES;
+                // using PHP 5.5's password_verify() function to check if the provided passwords fits to the hash of that user's password
+                break;
+            }
+            if (!password_verify($user_password, $user_object->user_password_hash)) {
+                // increment the failed login counter for that user
+                $login->incrementLoginFails($user_email);
+                $login->errors[] = MESSAGE_PASSWORD_WRONG;
+                // has the user activated their account with the verification email
+                break;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    function ok($user_object, $user_password, $user_rememberme)
+    {
+        global $login;
+        $user_object = (array)$user_object;
+        $login->writeUserDataIntoSession($user_object); // write user data into PHP SESSION [a file on your server]
+        // reset the failed login counter for that user
+        $login->resetLoginFails($user_object['email']);
+        // if user has check the "remember me" checkbox, then generate token and write cookie
+        if (isset($user_rememberme)) {
+            $login->newRememberMeCookie();
+        }
+        // OPTIONAL: recalculate the user's password hash
+        // DELETE this if-block if you like, it only exists to recalculate users's hashes when you provide a cost factor,
+        // by default the script will use a cost factor of 10 and never change it.
+        // check if the have defined a cost factor in config/hashing.php
+        try {
+            if (defined('HASH_COST_FACTOR')) {
+                // check if the hash needs to be rehashed
+                if (password_needs_rehash($user_object['user_password_hash'], PASSWORD_DEFAULT, array('cost' => HASH_COST_FACTOR))) {
+                    $rehashingStatus = $login->writeNewPasswordIntoDB($user_password);
+                    if ($rehashingStatus) {
+                        // @todo writing new hash was successful. you should now output this to the user ;)
+                    } else {
+                        // @todo writing new hash was NOT successful. you should now output this to the user ;)
+                    }
+                }
+            }
+        } catch (Exception $e) {
+        }
+        return true;
+    }
+
+}
+
 namespace User\Signup {
     /**
      * 1.
@@ -167,7 +282,7 @@ namespace User\Signup {
             //
             if ($query_update_user->rowCount() > 0) {
                 if (ALLOW_AUTO_SIGNIN_AFTER_VERIFY) {
-                    $login->_writeUserDataIntoSession($login->getUserDataFromEmail($user_email));
+                    $login->writeUserDataIntoSession($login->getUserDataFromEmail($user_email));
                 }
                 header('Location: ' . '/profile/?message=%MESSAGE_REGISTRATION_ACTIVATION_SUCCESSFUL%');
             } else {
@@ -509,7 +624,7 @@ namespace User\Process {
         if (
             $login->REQUEST_PATH_API == '/signin' && $login->REQUEST_METHOD == 'post'
         ) {
-            $login->loginWithPostData($_POST['user_email'], $_POST['user_password'], @$_POST['user_rememberme']);
+            \User\Signin\signin($_POST['user_email'], $_POST['user_password'], @$_POST['user_rememberme']);
         } else
             return false;
         return true;

@@ -263,7 +263,7 @@ class PHPLogin
                     $result_row = $sth->fetchObject();
 
                     if (isset($result_row->user_id)) {
-                        $this->_writeUserDataIntoSession($result_row); // write user data into PHP SESSION [a file on your server]
+                        $this->writeUserDataIntoSession($result_row); // write user data into PHP SESSION [a file on your server]
 
                         // Cookie token usable only once
                         $this->newRememberMeCookie($token);
@@ -281,116 +281,40 @@ class PHPLogin
     /**
      * write user data into PHP SESSION [a file on your server]
      */
-    public function _writeUserDataIntoSession($result_row)
+    public function writeUserDataIntoSession($user_object)
     {
-        $_SESSION['user_id'] = $result_row->user_id;
-        $_SESSION['user_name'] = $result_row->user_name;
-        $_SESSION['user_email'] = $result_row->email;
-        $_SESSION['user_access_level'] = $result_row->user_access_level;
+        $user_object = (array)$user_object;
+        $_SESSION['user_id'] = $user_object['user_id'];
+        $_SESSION['user_name'] = $user_object['user_name'];
+        $_SESSION['user_email'] = $user_object['email'];
+        $_SESSION['user_access_level'] = $user_object['user_access_level'];
         $_SESSION['user_logged_in'] = 1;
     }
 
-    /**
-     * @todo move to `User` namespace
-     * Logs in with the data provided in $_POST, coming from the login form
-     * @param $user_email
-     * @param $user_password
-     * @param $user_rememberme
-     */
-    public function loginWithPostData($user_email, $user_password, $user_rememberme)
+    public function incrementLoginFails ($user_email)
     {
-        if (empty($user_email)) {
-            $this->errors[] = MESSAGE_USERNAME_EMPTY;
-        } else if (empty($user_password)) {
-            $this->errors[] = MESSAGE_PASSWORD_EMPTY;
-            // if POST data (from login form) contains non-empty user_email and non-empty user_password
-        } else {
-            // user can login with his username or his email address.
-            // if user has not typed a valid email address, we try to identify him with his user_email
-            if (!filter_var($user_email, FILTER_VALIDATE_EMAIL)) {
-                // database query, getting all the info of the selected user
-                $result_row = $this->getUserDataFromEmail(trim($user_email));
-                // if user has typed a valid email address, we try to identify him with his user_email
-            } else {
-                // database query, getting all the info of the selected user
-                $result_row = $this->getUserDataFromEmail(trim($user_email));
-            }
-            //
-            // if this user not exists
-            if (!isset($result_row->user_id)) {
-                // was MESSAGE_USER_DOES_NOT_EXIST before, but has changed to MESSAGE_LOGIN_FAILED
-                // to prevent potential attackers showing if the user exists
-                $this->errors[] = MESSAGE_LOGIN_FAILED;
-            } else if (($result_row->user_failed_logins >= 3) && ($result_row->user_last_failed_login > (time() - 30))) {
-                $this->errors[] = MESSAGE_PASSWORD_WRONG_3_TIMES;
-                // using PHP 5.5's password_verify() function to check if the provided passwords fits to the hash of that user's password
-            } else if (!password_verify($user_password, $result_row->user_password_hash)) {
-                // increment the failed login counter for that user
-                $sth = $this->db_connection->prepare(
-                    'UPDATE user SET
-                        user_failed_logins = user_failed_logins+1,
-                        user_last_failed_login = :user_last_failed_login
-                     WHERE email = :user_email'
-                );
-                $sth->execute(array(':user_email' => $user_email, ':user_last_failed_login' => time()));
-
-                $this->errors[] = MESSAGE_PASSWORD_WRONG;
-                // has the user activated their account with the verification email
-            } else if ($result_row->user_active != 1) {
-                $this->errors[] = MESSAGE_ACCOUNT_NOT_ACTIVATED;
-            } else {
-                $this->_writeUserDataIntoSession($result_row); // write user data into PHP SESSION [a file on your server]
-
-                // reset the failed login counter for that user
-                $sth = $this->db_connection->prepare(
-                    'UPDATE user SET user_failed_logins = 0, user_last_failed_login = NULL
-                    WHERE user_id = :user_id AND user_failed_logins != 0'
-                );
-                $sth->execute(array(':user_id' => $result_row->user_id));
-
-                // if user has check the "remember me" checkbox, then generate token and write cookie
-                if (isset($user_rememberme)) {
-                    $this->newRememberMeCookie();
-                }
-
-                // OPTIONAL: recalculate the user's password hash
-                // DELETE this if-block if you like, it only exists to recalculate users's hashes when you provide a cost factor,
-                // by default the script will use a cost factor of 10 and never change it.
-                // check if the have defined a cost factor in config/hashing.php
-                if (defined('HASH_COST_FACTOR')) {
-                    // check if the hash needs to be rehashed
-                    if (password_needs_rehash($result_row->user_password_hash, PASSWORD_DEFAULT, array('cost' => HASH_COST_FACTOR))) {
-
-                        // calculate new hash with new cost factor
-                        $user_password_hash = $this->getPasswordHash($user_password);
-
-                        // save the new password hash into database
-                        $query_update = $this->db_connection->prepare(
-                            'UPDATE user SET user_password_hash = :user_password_hash WHERE user_id = :user_id'
-                        );
-                        $query_update->bindValue(':user_password_hash', $user_password_hash, PDO::PARAM_STR);
-                        $query_update->bindValue(':user_id', $result_row->user_id, PDO::PARAM_INT);
-                        $query_update->execute();
-
-                        if ($query_update->rowCount() == 0) {
-                            // writing new hash was successful. you should now output this to the user ;)
-                        } else {
-                            // writing new hash was NOT successful. you should now output this to the user ;)
-                        }
-                    }
-                }
-            }
-        }
-        header('Location: /profile/?logged-in'
-            . ($this->errors ? '&errors=' . join('|',$this->errors) : '')
-            . ($this->messages ? '&messages=' . join('|',$this->messages) : '')
+        $sth = $this->db_connection->prepare(
+            'UPDATE user SET
+                user_failed_logins = user_failed_logins+1,
+                user_last_failed_login = :user_last_failed_login
+             WHERE email = :user_email'
         );
+        $sth->execute(array(':user_email' => $user_email, ':user_last_failed_login' => time()));
+    }
+
+    public function resetLoginFails ($user_email)
+    {
+        $sth = $this->db_connection->prepare(
+            'UPDATE user SET user_failed_logins = 0, user_last_failed_login = NULL
+            WHERE user_email = :user_email AND user_failed_logins != 0'
+        );
+        $sth->execute(array(':user_email' => $user_email));
     }
 
     /**
      * Create all data needed for remember me cookie connection on client and server side
      */
-    private function newRememberMeCookie($current_rememberme_token = '')
+    public function newRememberMeCookie($current_rememberme_token = '')
     {
         // if database connection opened
         if ($this->databaseConnection()) {
