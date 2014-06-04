@@ -577,7 +577,7 @@ class PHPLogin
     {
         // write new users data into database
         require_once "$_SERVER[DOCUMENT_ROOT]/vendor/a-x-/invntrm-common-php/Mq.php";
-        return (new \Mq())->newR(
+        return (new \AlxMq())->req(
             'user[user_name=*,email=*,user_password_hash=*,user_activation_hash=*,user_registration_ip=*]>'
             ,'sssss'
             ,[$user_name, $user_email, $user_password_hash, $user_activation_hash,$_SERVER['REMOTE_ADDR']]
@@ -666,16 +666,16 @@ class PHPLogin
             $extraNameNames = join(',',$extraNameNames);
             //
             // write new users data into database
-            (new \Mq())->newR("origin_extra_{$extraName}[$extraNameNames]>",str_repeat('s',\Invntrm\true_count($params)),$params);
-            (new \Mq())->newR("user_extra_{$extraName}[user_email=*,origin_extra_{$extraName}_id=*]>",'si',[$user_email]);
+            (new \AlxMq())->req("origin_extra_{$extraName}[$extraNameNames]>",str_repeat('s',\Invntrm\true_count($params)),$params);
+            (new \AlxMq())->req("user_extra_{$extraName}[user_email=*,origin_extra_{$extraName}_id=*]>",'si',[$user_email]);
         }
         //
         // Add link with `{name}` table
         // (link by `user_link_{name})` table
         foreach($link as $linkName => $linkValue) {
             $linkName = preg_replace('![^a-z0-9\-_]!i','',$linkName);
-            $event_id = (new \Mq())->newR("{$linkName}['$linkValue']?id");
-            (new \Mq())->newR("user_link_{$linkName}[{$linkName}_id=*,user_email=*]>",'is',[$event_id,$user_email]);
+            $product_id = (new \AlxMq())->req("{$linkName}['$linkValue']?id");
+            (new \AlxMq())->req("user_link_{$linkName}[{$linkName}_id=*,user_email=*]>",'is',[$product_id,$user_email]);
         }
     }
 
