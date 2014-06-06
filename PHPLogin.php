@@ -501,11 +501,24 @@ class PHPLogin
     {
         // write new users data into database
         require_once "$_SERVER[DOCUMENT_ROOT]/vendor/a-x-/invntrm-common-php/Mq.php";
-        return (new \AlxMq())->req(
+        $mq = new \AlxMq();
+        // Is user exist
+        $user_id = $mq->req('user[email=*]?user_id','s',$user_email);
+        // if user exist
+        if($user_id) {
+            // Update password's hashes
+            $mq->req(
+                'user[user_id=*]?user_password_hash=*,user_activation_hash=*',
+                'iss',
+                [$user_id, $user_password_hash, $user_activation_hash]
+            );
+        }
+        // Return user id
+        return (!$user_id) ? $mq->req(
             'user[user_name=*,email=*,user_password_hash=*,user_activation_hash=*,user_registration_ip=*]>'
             ,'sssss'
             ,[$user_name, $user_email, $user_password_hash, $user_activation_hash,$_SERVER['REMOTE_ADDR']]
-        );
+        ) : $user_id;
     }
 
     /**
