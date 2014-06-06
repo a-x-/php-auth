@@ -141,6 +141,21 @@ namespace User\Signin {
 }
 
 namespace User\Signup {
+    function addNewUser($user_name, $user_email, $user_password_new = null)
+    {
+        global $login;
+        if (ALLOW_NO_PASSWORD && !$user_password_new) {
+            $user_password_new = \Invntrm\generateStrongPassword();
+        }
+        // crypt the user's password with the PHP 5.5's password_hash() function.
+        $user_password_hash = $login->getPasswordHash($user_password_new);
+        // generate random hash for email verification (40 char string)
+        $user_activation_hash  = sha1(uniqid(mt_rand(), true));
+        $user_id = $login->writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash);
+        return $user_id ? [$user_activation_hash, $user_id] : false;
+    }
+
+
     /**
      * 1.
      * handles the entire registration process. checks all error possibilities, and creates a new user in the database if
@@ -198,16 +213,9 @@ namespace User\Signup {
                 //
                 // Ok user can be create
             } else {
-                if (ALLOW_NO_PASSWORD) {
-                    $user_password_new = \Invntrm\generateStrongPassword();
-                }
-                // crypt the user's password with the PHP 5.5's password_hash() function.
-                $user_password_hash = $login->getPasswordHash($user_password_new);
-                // generate random hash for email verification (40 char string)
-                $user_activation_hash  = sha1(uniqid(mt_rand(), true));
-                $query_new_user_insert = $login->writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash);
+                list($user_activation_hash,$user_id) = addNewUser($user_name,$user_email,$user_password_new);
                 $login->writeNewExtraUserDataIntoDB($user_email, $extraFields, $linkFields);
-                if ($query_new_user_insert) {
+                if ($user_activation_hash) {
                     // send a verification email
                     if (\User\Signup\sendVerifyMail($user_email, $user_activation_hash)) {
                         // when mail has been send successfully
