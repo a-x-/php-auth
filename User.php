@@ -150,9 +150,9 @@ namespace User\Signup {
         // crypt the user's password with the PHP 5.5's password_hash() function.
         $user_password_hash = $login->getPasswordHash($user_password_new);
         // generate random hash for email verification (40 char string)
-        $user_activation_hash  = sha1(uniqid(mt_rand(), true));
-        $user_id = $login->writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash);
-        return $user_id ? [$user_activation_hash, $user_id] : false;
+        $user_activation_hash = sha1(uniqid(mt_rand(), true));
+        $user_id              = $login->writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash);
+        return !empty($user_id) ? [$user_activation_hash, $user_id] : false;
     }
 
 
@@ -213,7 +213,7 @@ namespace User\Signup {
                 //
                 // Ok user can be create
             } else {
-                list($user_activation_hash,$user_id) = addNewUser($user_name,$user_email,$user_password_new);
+                list($user_activation_hash, $user_id) = addNewUser($user_name, $user_email, $user_password_new);
                 $login->writeNewExtraUserDataIntoDB($user_email, $extraFields, $linkFields);
                 if ($user_activation_hash) {
                     // send a verification email
@@ -588,7 +588,12 @@ namespace User\Process {
         if (
             $login->REQUEST_PATH_API == '/' && $login->REQUEST_METHOD == 'post'
         ) {
-            \User\Signup\checkPostData($_POST['user_name'], $_POST['user_email'], @$_POST["opt"], @$_POST['extra'], @$_POST['link']);
+            try {
+                \User\Signup\checkPostData($_POST['user_name'], $_POST['user_email'], @$_POST["opt"], @$_POST['extra'], @$_POST['link']);
+            } catch (\Exception $e) {
+                \Invntrm\bugReport2('', $e);
+                return false;
+            }
         } else return false;
         return true;
     }
