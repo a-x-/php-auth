@@ -500,7 +500,7 @@ class PHPLogin
     public function writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash)
     {
         // write new users data into database
-        require_once "$_SERVER[DOCUMENT_ROOT]/vendor/a-x-/invntrm-common-php/Mq.php";
+        require_once "$_SERVER[DOCUMENT_ROOT]/vendor/a-x-/backend/Mq.php";
         $mq = new \AlxMq();
         // Is user exist
         $user_id = $mq->req('user[email=*]?user_id','s',$user_email);
@@ -587,7 +587,7 @@ class PHPLogin
      */
     public function writeNewExtraUserDataIntoDB($user_email, $extra, $link)
     {
-        require_once "$_SERVER[DOCUMENT_ROOT]/vendor/a-x-/invntrm-common-php/Mq.php";
+        require_once "$_SERVER[DOCUMENT_ROOT]/vendor/a-x-/backend/Mq.php";
         //
         // Insert extra data into linked table `origin_extra_{name}`
         // (link by `user_extra_{name}` table)
