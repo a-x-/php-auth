@@ -1,0 +1,21 @@
+{
+    "name": "a-x-/php-login-advanced",
+    "description": "",
+    "license": "LGPL3",
+    "authors": [
+	    {
+	        "name": "Invntrm",
+	        "email": "Invntrm@gmail.com"
+	    },
+		{
+			"name":"devplanete"
+		},
+	    {
+	    	"name":"panique",
+	    	"email":"panique@web.de"
+		}
+	],
+    "require": {
+        "phpmailer/phpmailer": "*"
+    }
+}
