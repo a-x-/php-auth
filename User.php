@@ -144,13 +144,13 @@ namespace User\Signup {
     function addNewUser($user_name, $user_email, $user_password_new = null)
     {
         global $login;
+        if($user_id = $login->isUserExist($user_email))
+            return $user_id;
         if (ALLOW_NO_PASSWORD && !$user_password_new) {
             $user_password_new = \Invntrm\generateStrongPassword();
         }
-        // crypt the user's password with the PHP 5.5's password_hash() function.
-        $user_password_hash = $login->getPasswordHash($user_password_new);
-        // generate random hash for email verification (40 char string)
-        $user_activation_hash = sha1(uniqid(mt_rand(), true));
+        $user_password_hash   = $login->getPasswordHash($user_password_new); // crypt the user's password with the PHP 5.5's password_hash() function.
+        $user_activation_hash = sha1(uniqid(mt_rand(), true));// generate random hash for email verification (40 char string)
         $user_id              = $login->writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash);
         return !empty($user_id) ? [$user_activation_hash, $user_id] : false;
     }

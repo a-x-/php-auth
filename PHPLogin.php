@@ -1,5 +1,6 @@
 <?php
 require_once 'User.php';
+require_once __DIR__ . '/../../../vendor/a-x-/backend/Mq.php';
 
 /**
  * handles the user login/logout/session
@@ -60,7 +61,9 @@ class PHPLogin
         //
         // include the to-be-used language. feel free to translate your project and include something else.
         // detection of the language for the current user/browser
-        $user_lang = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, 2);
+        $acceptLang = \Invntrm\true_get($_SERVER,'HTTP_ACCEPT_LANGUAGE');
+        if(!$acceptLang) $acceptLang = 'ru';
+        $user_lang = substr($acceptLang, 0, 2);
         // if translation file for the detected language doesn't exist, we use default english file
         $getTranslationFilePath = function ($lang) {
             return "$_SERVER[DOCUMENT_ROOT]/_data/translations/$lang.php"; //$_SERVER[DOCUMENT_ROOT]/
@@ -331,6 +334,17 @@ class PHPLogin
     }
 
     /**
+     * @param $user_email
+     *
+     * @return array|bool|mysqli_result|mysqli_stmt|string
+     */
+    public function isUserExist($user_email)
+    {
+        $user_id = (new \AlxMq())->req('user[email=*]?user_id', 's', $user_email);
+        return $user_id;
+    }
+
+    /**
      * Create a PHPMailer Object with configuration of config.php
      * @return PHPMailer Object
      */
@@ -496,21 +510,18 @@ class PHPLogin
     }
 
     /**
+     * write new users data into database
      * @param $user_name
      * @param $user_email
      * @param $user_password_hash
      * @param $user_activation_hash
      *
-     * @internal param $login
      * @return mixed
      */
     public function writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash)
     {
-        // write new users data into database
-        require_once "$_SERVER[DOCUMENT_ROOT]/vendor/a-x-/backend/Mq.php";
-        $mq = new \AlxMq();
-        // Is user exist
-        $user_id = $mq->req('user[email=*]?user_id', 's', $user_email);
+        $user_id = $this->isUserExist($user_email);
+        $mq = new AlxMq();
         // if user exist
         if ($user_id) {
             // Update password's hashes
@@ -519,13 +530,14 @@ class PHPLogin
                 'iss',
                 [$user_id, $user_password_hash, $user_activation_hash]
             );
+            return $user_id;
         }
-        // Return user id
-        return (!$user_id) ? $mq->req(
+        // Add new user and Return new user's id
+        return $mq->req(
             'user[user_name=*,email=*,user_password_hash=*,user_activation_hash=*,user_registration_ip=*]>'
             , 'sssss'
             , [$user_name, $user_email, $user_password_hash, $user_activation_hash, $_SERVER['REMOTE_ADDR']]
-        ) : $user_id;
+        );
     }
 
     /**
@@ -638,38 +650,6 @@ class PHPLogin
             }
         } catch (Exception $e) {
             \Invntrm\bugReport2('user login with links', $e);
-        }
-    }
-
-
-    /**
-     * ГОВНО :((
-     * проект надо сдавать неделю назад...
-     * @param $user_email
-     * @param $extra
-     * @return mixed
-     */
-    public function writeNewExtraUserDataIntoDB($user_email, $extra)
-    {
-        foreach($extra as $extraName => $extraData) {
-            $extraName = preg_replace('![^a-z0-9\-_]!i','',$extraName);
-            $extraData = preg_split('!,!',$extraData);
-            $extraNameNames = ''; $extraNameNamesSemi = ''; $params = [':user_email'=>$user_email];
-            foreach($extraData as &$extraDataEl) {
-                $extraDataEl = preg_split('!:!',$extraDataEl);
-                $extraNameNames .= ','.$extraDataEl[0];
-                $extraNameNamesSemi .= ',:'.$extraDataEl[0];
-                $params[':'.$extraDataEl[0]]=$extraDataEl[1];
-            }
-            // write new users data into database
-            $query_new_user_insert = $this->db_connection->prepare(
-                "INSERT INTO user_extra_$extraName (
-                   user_email $extraNameNames
-                ) VALUES(
-                    :user_email $extraNameNamesSemi
-                )"
-            );
-            $result = $query_new_user_insert->execute($params);
         }
     }
 }
