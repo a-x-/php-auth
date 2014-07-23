@@ -58,20 +58,7 @@ class PHPLogin
         //
         // include the config
         require_once($configPath ? $configPath : __DIR__ . '/sample/config/config.php');
-        //
-        // include the to-be-used language. feel free to translate your project and include something else.
-        // detection of the language for the current user/browser
-        $acceptLang = \Invntrm\true_get($_SERVER,'HTTP_ACCEPT_LANGUAGE');
-        if(!$acceptLang) $acceptLang = 'ru';
-        $user_lang = substr($acceptLang, 0, 2);
-        // if translation file for the detected language doesn't exist, we use default english file
-        $getTranslationFilePath = function ($lang) {
-            return "$_SERVER[DOCUMENT_ROOT]/_data/translations/$lang.php"; //$_SERVER[DOCUMENT_ROOT]/
-        };
-        if (!file_exists($getTranslationFilePath($user_lang))) {
-            $user_lang = 'en';
-        }
-        require_once $getTranslationFilePath($user_lang);
+        
         //
         $this->USER_NAME_VERIFICATION_REGEX = '/^[0-9 \-_' . (ALLOW_UTF8_USERNAMES ? '[:alpha:]' : 'a-z') . ']{2,64}$/iu';
         $this->REQUEST_PATH                 = (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
@@ -80,7 +67,7 @@ class PHPLogin
         $GLOBALS['login']                   = $this;
         //
         // create/read session
-        @session_start();
+        \Invntrm\true_session_start();
         //
         // Execute login/registration action
         // this function looks into $_POST and $_GET to execute the corresponding login/registration action.
