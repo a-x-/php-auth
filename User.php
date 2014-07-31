@@ -145,7 +145,7 @@ namespace User\Signup {
     {
         global $login;
         if($user_id = $login->isUserExist($user_email))
-            return $user_id;
+            return [null,$user_id];
         if (ALLOW_NO_PASSWORD && !$user_password_new) {
             $user_password_new = \Invntrm\generateStrongPassword();
         }
