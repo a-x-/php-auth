@@ -79,7 +79,7 @@ namespace User\Signin {
             $user_object = $login->getUserDataFromEmail($user_email);
             //
             // if this user not exists
-            if (!isset($user_object->user_id)) {
+            if (!isset($user_object->id)) {
                 // was MESSAGE_USER_DOES_NOT_EXIST before, but has changed to MESSAGE_LOGIN_FAILED
                 // to prevent potential attackers showing if the user exists
                 $login->errors[] = MESSAGE_LOGIN_FAILED;
@@ -208,7 +208,7 @@ namespace User\Signup {
         } else {
             $result_row = $login->getUserDataFromEmail($user_email);
             // if email already in the database
-            if (isset($result_row->user_id)) {
+            if (isset($result_row->id)) {
                 $login->errors[] = MESSAGE_EMAIL_ALREADY_EXISTS;
                 //
                 // Ok user can be create
@@ -337,7 +337,7 @@ namespace User\Reset {
             $result_row = $login->getUserDataFromEmail($user_email);
             //
             // if this user exists
-            if (isset($result_row->user_id)) {
+            if (isset($result_row->id)) {
                 //
                 // store his password_reset_hash in the DB
                 $query_update = $login->writeUsersPasswordResetTempHashIntoDB($user_password_reset_hash, $temporary_timestamp, $user_email);
@@ -414,7 +414,7 @@ namespace User\Reset {
             $result_row = $login->getUserDataFromEmail($user_email);
             //
             // if this user exists and have the same hash in database
-            if (isset($result_row->user_id) && $result_row->user_password_reset_hash == $verification_code) {
+            if (isset($result_row->id) && $result_row->user_password_reset_hash == $verification_code) {
                 $timestamp_one_hour_ago = time() - 3600; // 3600 seconds are 1 hour
                 //
                 if ($result_row->user_password_reset_timestamp > $timestamp_one_hour_ago) {
@@ -519,7 +519,7 @@ namespace User\Edit {
             // check if new email already exists
             $result_row = $login->getUserDataFromEmail($user_email);
             // if this email exists
-            if (isset($result_row->user_id)) {
+            if (isset($result_row->id)) {
                 $login->errors[] = MESSAGE_EMAIL_ALREADY_EXISTS;
             } else {
                 //

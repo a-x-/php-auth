@@ -58,7 +58,7 @@ class PHPLogin
         //
         // include the config
         require_once($configPath ? $configPath : __DIR__ . '/sample/config/config.php');
-        
+
         //
         $this->USER_NAME_VERIFICATION_REGEX = '/^[0-9 \-_' . (ALLOW_UTF8_USERNAMES ? '[:alpha:]' : 'a-z') . ']{2,64}$/iu';
         $this->REQUEST_PATH                 = (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
@@ -118,16 +118,16 @@ class PHPLogin
                     // get real token from database (and all other data)
                     $sth = $this->db_connection->prepare(
                         "SELECT
-                           user.user_id,
+                           user.id,
                            user.user_name,
                            user.email,
                            user.user_access_level
-                        FROM user_connections
-                           LEFT JOIN user u ON uc.user_id = u.user_id
+                        FROM user_connections LEFT JOIN user
+                            ON user_connections.user_id = user.id
                         WHERE
-                           uc.user_id = :user_id
-                            AND uc.user_rememberme_token = :user_rememberme_token
-                            AND uc.user_rememberme_token IS NOT NULL"
+                           user_connections.user_id = :user_id
+                            AND user_connections.user_rememberme_token = :user_rememberme_token
+                            AND user_connections.user_rememberme_token IS NOT NULL"
                     );
                     $sth->bindValue(':user_id', $user_id, PDO::PARAM_INT);
                     $sth->bindValue(':user_rememberme_token', $token, PDO::PARAM_STR);
@@ -135,7 +135,7 @@ class PHPLogin
                     // get result row (as an object)
                     $result_row = $sth->fetchObject();
 
-                    if (isset($result_row->user_id)) {
+                    if (isset($result_row->id)) {
                         $this->writeUserDataIntoSession($result_row); // write user data into PHP SESSION [a file on your server]
 
                         // Cookie token usable only once
@@ -327,7 +327,7 @@ class PHPLogin
      */
     public function isUserExist($user_email)
     {
-        $user_id = (new \AlxMq())->req('user[email=*]?user_id', 's', $user_email);
+        $user_id = (new \AlxMq())->req('user[email=*]?id', 's', $user_email);
         return $user_id;
     }
 
@@ -498,6 +498,7 @@ class PHPLogin
 
     /**
      * write new users data into database
+     *
      * @param $user_name
      * @param $user_email
      * @param $user_password_hash
@@ -508,12 +509,12 @@ class PHPLogin
     public function writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash)
     {
         $user_id = $this->isUserExist($user_email);
-        $mq = new AlxMq();
+        $mq      = new AlxMq();
         // if user exist
         if ($user_id) {
             // Update password's hashes
             $mq->req(
-                'user[user_id=*]?user_password_hash=*,user_activation_hash=*',
+                'user[id=*]?user_password_hash=*,user_activation_hash=*',
                 'iss',
                 [$user_id, $user_password_hash, $user_activation_hash]
             );
@@ -572,7 +573,7 @@ class PHPLogin
     {
         $paramName            = preg_replace('![^a-z0-9_-]!i', '', $paramNameUntrusted);
         $query_edit_user_name = $this->db_connection->prepare(
-            "UPDATE user SET $paramName = :$paramName WHERE user_id = :user_id"
+            "UPDATE user SET $paramName = :$paramName WHERE id = :user_id"
         );
         $query_edit_user_name->execute([":$paramName" => $paramValue, ':user_id' => $_SESSION['user_id']]);
         //
