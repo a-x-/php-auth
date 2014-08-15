@@ -36,7 +36,7 @@ namespace User\Signin {
      * @param $user_password
      * @param $user_rememberme
      */
-    function signin($user_email, $user_password, $user_rememberme)
+    function signin ($user_email, $user_password, $user_rememberme, $isAutoSignin = false)
     {
         global $login;
         $next_state  = 'check';
@@ -44,7 +44,7 @@ namespace User\Signin {
         while (true) switch ($next_state) {
             case('check'):
                 $next_state = 'exit';
-                if (!\User\Signin\check($user_email, $user_password)) break;
+                if (!\User\Signin\check($user_email, $user_password) && !$isAutoSignin) break;
                 $next_state = 'ok';
                 break;
             case('ok'):

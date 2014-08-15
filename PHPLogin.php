@@ -116,27 +116,13 @@ class PHPLogin
                 // cookie looks good, try to select corresponding user
                 if ($this->databaseConnection()) {
                     // get real token from database (and all other data)
-                    $sth = $this->db_connection->prepare(
-                        "SELECT
-                           user.id,
-                           user.user_name,
-                           user.email,
-                           user.user_access_level
-                        FROM user_connections LEFT JOIN user
-                            ON user_connections.user_id = user.id
-                        WHERE
-                           user_connections.user_id = :user_id
-                            AND user_connections.user_rememberme_token = :user_rememberme_token
-                            AND user_connections.user_rememberme_token IS NOT NULL"
+                    $userData = (new \AlxMq())->req(
+                        'user[id=*&&user_connections.user_rememberme_token]?id, user_name, email, user_access_level',
+                        'is', [(int)$user_id, (string)$token]
                     );
-                    $sth->bindValue(':user_id', $user_id, PDO::PARAM_INT);
-                    $sth->bindValue(':user_rememberme_token', $token, PDO::PARAM_STR);
-                    $sth->execute();
-                    // get result row (as an object)
-                    $result_row = $sth->fetchObject();
 
-                    if (isset($result_row->id)) {
-                        $this->writeUserDataIntoSession($result_row); // write user data into PHP SESSION [a file on your server]
+                    if (isset($userData)) {
+                        $this->writeUserDataIntoSession($userData); // write user data into PHP SESSION [a file on your server]
 
                         // Cookie token usable only once
                         $this->newRememberMeCookie($token);
@@ -182,7 +168,7 @@ class PHPLogin
     public function writeUserDataIntoSession($user_object)
     {
         $user_object                   = (array)$user_object;
-        $_SESSION['user_id']           = $user_object['user_id'];
+        $_SESSION['user_id']           = $user_object['id'];
         $_SESSION['user_name']         = $user_object['user_name'];
         $_SESSION['user_email']        = $user_object['email'];
         $_SESSION['user_access_level'] = $user_object['user_access_level'];
@@ -222,7 +208,7 @@ class PHPLogin
             $cookie_string_hash       = hash('sha256', $cookie_string_first_part . COOKIE_SECRET_KEY);
             $cookie_string            = $cookie_string_first_part . ':' . $cookie_string_hash;
 
-            // set cookie
+            // set cookie $_COOKIE['rememberme']
             setcookie('rememberme', $cookie_string, time() + COOKIE_RUNTIME, "/", COOKIE_DOMAIN);
         }
     }
