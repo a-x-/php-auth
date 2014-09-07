@@ -41,26 +41,112 @@ class PHPLogin
 
     public $REQUEST_METHOD = '';
 
+    private $settings = [];
+
+    public function setting($key)
+    {
+        return \Invntrm\true_get($this->settings, $key);
+    }
+
     /**
      * the function "__construct()" automatically starts whenever an object of this class is created,
      * you know, when you do "$login = new PHPLogin();"
      */
-    public function __construct($configPath = '')
+    public function __construct($configPath = '', $settings = [])
     {
         // check for minimum PHP version
         if (version_compare(PHP_VERSION, '5.3.7', '<')) {
             exit('Sorry, this script does not run on a PHP version smaller than 5.3.7 !');
-        } else if (version_compare(PHP_VERSION, '5.5.0', '<')) {
+        }
+        else if (version_compare(PHP_VERSION, '5.5.0', '<')) {
             // if you are using PHP 5.3 or PHP 5.4 you have to include the password_api_compatibility_library.php
             // (this library adds the PHP 5.5 password hashing functions to older versions of PHP)
             require_once(__DIR__ . '/libraries/password_compatibility_library.php');
         }
         //
         // include the config
+        // @deprecated
         require_once($configPath ? $configPath : __DIR__ . '/sample/config/config.php');
+        //
+        // Define settings
+        $this->settings = array_merge([
+            'BASE_API_ENDPOINT'                => '/api/profile/',
+            'BASE_VIEW_ENDPOINT'               => '/profile/',
+            'MAIL_TEMPLATES_DIR'               => '/_components/auth_mail_template',
+            'ALLOW_REMEMBERME_BY_DEFAULT'      => true,
+            'ALLOW_AUTO_SIGNIN_AFTER_VERIFY'   => true,
+            'ALLOW_UTF8_USERNAMES'             => true,
+            'ALLOW_NO_PASSWORD'                => true,
+            "ALLOW_NO_PASSWORD_RETYPE"         => true,
+            'ALLOW_NO_CAPTCHA'                 => true,
+            "EMAIL_BODY_TYPE"                  => 'html',
+            'ALLOW_ADMIN_TO_REGISTER_NEW_USER' => true,
+            'ALLOW_USER_REGISTRATION'          => true,
+
+            /**
+             * Configuration for: Hashing strength
+             * This is the place where you define the strength of your password hashing/salting
+             *
+             * To make password encryption very safe and future-proof, the PHP 5.5 hashing/salting functions
+             * come with a clever so called COST FACTOR. This number defines the base-2 logarithm of the rounds of hashing,
+             * something like 2^12 if your cost factor is 12. By the way, 2^12 would be 4096 rounds of hashing, doubling the
+             * round with each increase of the cost factor and therefore doubling the CPU power it needs.
+             * Currently, in 2013, the developers of this functions have chosen a cost factor of 10, which fits most standard
+             * server setups. When time goes by and server power becomes much more powerful, it might be useful to increase
+             * the cost factor, to make the password hashing one step more secure. Have a look here
+             * (@see https://github.com/panique/php-login/wiki/Which-hashing-&-salting-algorithm-should-be-used-%3F)
+             * in the BLOWFISH benchmark table to get an idea how this factor behaves. For most people this is irrelevant,
+             * but after some years this might be very very useful to keep the encryption of your database up to date.
+             *
+             * Remember: Every time a user registers or tries to log in (!) this calculation will be done.
+             * Don't change this if you don't know what you do.
+             *
+             * To get more information about the best cost factor please have a look here
+             * @see http://stackoverflow.com/q/4443476/1114320
+             *
+             * This constant will be used in the login and the registration class.
+             */
+            'HASH_COST_FACTOR'                 => 10,
+            'EMAIL'                            => [
+                'NAME'                 => PROJECT_NAME,
+                'ADDRESS'              => MAILER_EMAIL,
+                'VERIFICATION_SUBJECT' => 'Подтверждение',
+                'RESET_SUBJECT'        => 'Сброс парполя',
+
+                /**
+                 * Configuration for: Cookies
+                 * Please note: The COOKIE_DOMAIN needs the domain where your app is,
+                 * in a format like this: .mydomain.com
+                 * Note the . in front of the domain. No www, no http, no slash here!
+                 * For local development, use false because .127.0.0.1 or .localhost don't work inside Chrome
+                 * but when deploying you should change this to your real domain, like '.mydomain.com' !
+                 * The leading dot makes the cookie available for sub-domains too.
+                 * @see http://stackoverflow.com/q/9618217/1114320
+                 * @see http://www.php.net/manual/en/function.setcookie.php
+                 * @see http://stackoverflow.com/questions/1134290/cookies-on-localhost-with-explicit-domain
+                 *
+                 * COOKIE_RUNTIME: How long should a cookie be valid ? 1209600 seconds = 2 weeks
+                 * COOKIE_DOMAIN: The domain where the cookie is valid for, like '.mydomain.com'
+                 * COOKIE_SECRET_KEY: Put a random value here to make your app more secure. When changed, all cookies are reset.
+                 */
+            ],
+            "COOKIE_RUNTIME"                   => 1209600,
+            "COOKIE_DOMAIN"                    => "." . $_SERVER['SERVER_NAME'],
+            "COOKIE_SECRET_KEY"                => "___1gp@#32PS{+$78sfSDFrtre-*766pMJFe-92s"
+        ], $settings);
+        //
+        // Password-retype do not be true when allow-no-password is true
+        if (!empty($this->settings['ALLOW_NO_PASSWORD']) && !empty($this->settings['ALLOW_NO_PASSWORD_RETYPE'])) {
+            $this->settings['ALLOW_NO_PASSWORD_RETYPE'] =
+                $this->settings['ALLOW_NO_PASSWORD_RETYPE'] || $this->settings['ALLOW_NO_PASSWORD'];
+        }
+        //
+        // Add absolute endpoints values
+        $this->settings['BASE_API_ENDPOINT_ABSOLUTE'] = 'http://' . $_SERVER['HTTP_HOST'] . $this->settings['BASE_API_ENDPOINT'];
+        $this->settings['BASE_VIEW_ENDPOINT_ABSOLUTE'] = 'http://' . $_SERVER['HTTP_HOST'] . $this->settings['BASE_VIEW_ENDPOINT'];
 
         //
-        $this->USER_NAME_VERIFICATION_REGEX = '/^[0-9 \-_' . (ALLOW_UTF8_USERNAMES ? '[:alpha:]' : 'a-z') . ']{2,64}$/iu';
+        $this->USER_NAME_VERIFICATION_REGEX = '/^[0-9 \-_' . ($this->settings['ALLOW_UTF8_USERNAMES'] ? '[:alpha:]' : 'a-z') . ']{2,64}$/iu';
         $this->REQUEST_PATH                 = (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
         $this->REQUEST_PATH_API             = @$_REQUEST['api_path'];
         $this->REQUEST_METHOD               = strtolower($_SERVER['REQUEST_METHOD']);
@@ -94,9 +180,10 @@ class PHPLogin
         //
         // 2.
         // login with cookie
-        if (isset($_COOKIE['rememberme'])) {
+        elseif (isset($_COOKIE['rememberme'])) {
             $this->loginWithCookieData();
-        } else {
+        }
+        else {
             return false;
         }
         return true;
@@ -112,53 +199,26 @@ class PHPLogin
             // extract data from the cookie
             list ($user_id, $token, $hash) = explode(':', $_COOKIE['rememberme']);
             // check cookie hash validity
-            if ($hash == hash('sha256', $user_id . ':' . $token . COOKIE_SECRET_KEY) && !empty($token)) {
+            if ($hash == hash('sha256', $user_id . ':' . $token . $this->settings['COOKIE_SECRET_KEY']) && !empty($token)) {
                 // cookie looks good, try to select corresponding user
-                if ($this->databaseConnection()) {
-                    // get real token from database (and all other data)
-                    $userData = (new \AlxMq())->req(
-                        'user[id=*&&user_connections.user_rememberme_token]?id, user_name, email, user_access_level',
-                        'is', [(int)$user_id, (string)$token]
-                    );
+                // get real token from database (and all other data)
+                $userData = (new \AlxMq())->req(
+                    'user[id=* && user_connections.user_rememberme_token]?id, user_name, email, user_access_level',
+                    'is', [(int)$user_id, (string)$token]
+                );
 
-                    if (isset($userData)) {
-                        $this->writeUserDataIntoSession($userData); // write user data into PHP SESSION [a file on your server]
+                if (isset($userData)) {
+                    $this->writeUserDataIntoSession($userData); // write user data into PHP SESSION [a file on your server]
 
-                        // Cookie token usable only once
-                        $this->newRememberMeCookie($token);
-                        return true;
-                    }
+                    // Cookie token usable only once
+                    $this->newRememberMeCookie($token);
+                    return true;
                 }
             }
             // A cookie has been used but is not valid... we delete it
             $this->deleteRememberMeCookie();
-            $this->errors[] = MESSAGE_COOKIE_INVALID;
+            $this->errors[] = '%MESSAGE_COOKIE_INVALID%';
         }
-        return false;
-    }
-
-    /**
-     * Checks if database connection is opened. If not, then this method tries to open it.
-     * @return bool Success status of the database connecting process
-     */
-    public function databaseConnection()
-    {
-        // if connection already exists
-        if ($this->db_connection != null) {
-            return true;
-        } else {
-            try {
-                // Generate a database connection, using the PDO connector
-                // Also important: We include the charset, as leaving it out seems to be a security issue:
-                // @see http://wiki.hashphp.org/PDO_Tutorial_for_MySQL_Developers#Connecting_to_MySQL says:
-                // "Adding the charset to the DSN is very important for security reasons"
-                $this->db_connection = new PDO('mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8', DB_USER, DB_PASS);
-                return true;
-            } catch (PDOException $e) {
-                $this->errors[] = MESSAGE_DATABASE_ERROR . $e->getMessage();
-            }
-        }
-        // default return
         return false;
     }
 
@@ -180,37 +240,37 @@ class PHPLogin
      */
     public function newRememberMeCookie($current_rememberme_token = '')
     {
-        // if database connection opened
-        if ($this->databaseConnection()) {
-            // generate 64 char random string and store it in current user data
-            $random_token_string = hash('sha256', mt_rand());
-
-            // record the new token for this user/device
-            if ($current_rememberme_token == '') {
-                $sth = $this->db_connection->prepare("INSERT INTO user_connections (user_id, user_rememberme_token, user_login_agent, user_login_ip, user_login_datetime, user_last_visit) VALUES (:user_id, :user_rememberme_token, :user_login_agent, :user_login_ip, now(), now())");
-                $sth->bindValue(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
-                $sth->bindValue(':user_rememberme_token', $random_token_string, PDO::PARAM_STR);
-                $sth->bindValue(':user_login_agent', $_SERVER['HTTP_USER_AGENT'], PDO::PARAM_STR);
-                $sth->bindValue(':user_login_ip', $_SERVER['REMOTE_ADDR'], PDO::PARAM_STR);
-                $sth->execute();
-            } // update current rememberme token hash by a new one
-            else {
-                $sth = $this->db_connection->prepare("UPDATE user_connections SET user_rememberme_token = :new_token, user_last_visit=now(), user_last_visit_agent = :user_agent WHERE user_id = :user_id AND user_rememberme_token = :old_token");
-                $sth->bindValue(':new_token', $random_token_string, PDO::PARAM_STR);
-                $sth->bindValue(':user_agent', $_SERVER['HTTP_USER_AGENT'], PDO::PARAM_STR);
-                $sth->bindValue(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
-                $sth->bindValue(':old_token', $current_rememberme_token, PDO::PARAM_STR);
-                $sth->execute();
-            }
-
-            // generate cookie string that consists of userid, random string and combined hash of both
-            $cookie_string_first_part = $_SESSION['user_id'] . ':' . $random_token_string;
-            $cookie_string_hash       = hash('sha256', $cookie_string_first_part . COOKIE_SECRET_KEY);
-            $cookie_string            = $cookie_string_first_part . ':' . $cookie_string_hash;
-
-            // set cookie $_COOKIE['rememberme']
-            setcookie('rememberme', $cookie_string, time() + COOKIE_RUNTIME, "/", COOKIE_DOMAIN);
+        // generate 64 char random string and store it in current user data
+        $random_token_string = hash('sha256', mt_rand());
+        $paramsString        = 'user_rememberme_token=*, user_login_agent=*, user_login_ip=*, user_login_datetime=*, user_last_visit=*';
+        $sigma               = 'sssss';
+        $values              = [$random_token_string, $_SERVER['HTTP_USER_AGENT'], $_SERVER['REMOTE_ADDR']];
+        //
+        // record the new token for this user/device
+        if ($current_rememberme_token == '') {
+            (new \AlxMq())->req(
+                "user_connections[user_id=*,{$paramsString}]>",
+                "i{$sigma}",
+                array_merge((int)[$_SESSION['user_id']], $values)
+            );
         }
+        //
+        // update current rememberme token hash by a new one
+        else {
+            (new \AlxMq())->req(
+                "user_connections[user_id=* && user_rememberme_token=*]?,{$paramsString}",
+                "is{$sigma}",
+                array_merge([(int)$_SESSION['user_id'], $current_rememberme_token], $values)
+            );
+        }
+        //
+        // generate cookie string that consists of userid, random string and combined hash of both
+        $cookie_string_first_part = $_SESSION['user_id'] . ':' . $random_token_string;
+        $cookie_string_hash       = hash('sha256', $cookie_string_first_part . COOKIE_SECRET_KEY);
+        $cookie_string            = $cookie_string_first_part . ':' . $cookie_string_hash;
+        //
+        // set cookie $_COOKIE['rememberme']
+        setcookie('rememberme', $cookie_string, time() + $this->settings['COOKIE_RUNTIME'], "/", $this->settings['COOKIE_DOMAIN']);
     }
 
     /**
@@ -219,23 +279,20 @@ class PHPLogin
     public function deleteRememberMeCookie()
     {
         // if database connection opened and remember me cookie exist
-        if ($this->databaseConnection() && isset($_COOKIE['rememberme'])) {
+        if (isset($_COOKIE['rememberme'])) {
             //
             // extract data from the cookie
             list ($user_id, $token, $hash) = explode(':', $_COOKIE['rememberme']);
             // check cookie hash validity
-            if ($hash == hash('sha256', $user_id . ':' . $token . COOKIE_SECRET_KEY) && !empty($token)) {
+            if ($hash == hash('sha256', $user_id . ':' . $token . $this->settings['COOKIE_SECRET_KEY']) && !empty($token)) {
                 // Reset rememberme token of this device
-                $sth = $this->db_connection->prepare("DELETE FROM user_connections WHERE user_rememberme_token = :user_rememberme_token AND user_id = :user_id");
-                $sth->bindValue(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
-                $sth->bindValue(':user_rememberme_token', $token, PDO::PARAM_STR);
-                $sth->execute();
+                (new \AlxMq)->req('user_connections[user_rememberme_token=* && user_id=*]:d', 'si', [(string)$token, (int)$_SESSION['user_id']]);
             }
         }
         // set the rememberme-cookie to ten years ago (3600sec * 365 days * 10).
         // that's obviously the best practice to kill a cookie via php
         // @see http://stackoverflow.com/a/686166/1114320
-        setcookie('rememberme', false, time() - (3600 * 3650), '/', COOKIE_DOMAIN);
+        setcookie('rememberme', false, time() - (3600 * 3650), '/', $this->settings['COOKIE_DOMAIN']);
     }
 
     /**
@@ -247,8 +304,10 @@ class PHPLogin
     public function runSigninActions()
     {
         if (\User\Process\edit()) {
-        } elseif (\User\Process\signout()) {
-        } else {
+        }
+        elseif (\User\Process\signout()) {
+        }
+        else {
         }
     }
 
@@ -259,10 +318,14 @@ class PHPLogin
     public function runNoSignActions()
     {
         if (\User\Process\signin($this)) {
-        } elseif (\User\Process\signup($this)) {
-        } elseif (\User\Process\verify($this)) {
-        } elseif (\User\Process\reset()) {
-        } else {
+        }
+        elseif (\User\Process\signup($this)) {
+        }
+        elseif (\User\Process\verify($this)) {
+        }
+        elseif (\User\Process\reset()) {
+        }
+        else {
         }
     }
 
@@ -293,17 +356,7 @@ class PHPLogin
      */
     public function getUserDataFromEmail($user_email)
     {
-        // if database connection opened
-        if ($this->databaseConnection()) {
-            // database query, getting all the info of the selected user
-            $query_user = $this->db_connection->prepare('SELECT * FROM user WHERE email = :user_email');
-            $query_user->bindValue(':user_email', $user_email, PDO::PARAM_STR);
-            $query_user->execute();
-            // get result row (as an object)
-            return $query_user->fetchObject();
-        } else {
-            return false;
-        }
+        return (new \AlxMq)->req('user[email=*]?*', 's', [(string)$user_email]);
     }
 
     /**
@@ -317,67 +370,22 @@ class PHPLogin
         return $user_id;
     }
 
-    /**
-     * Create a PHPMailer Object with configuration of config.php
-     * @return PHPMailer Object
-     */
-    public function getPHPMailerObject()
-    {
-        require_once(__DIR__ . '/libraries/PHPMailer.php');
-        $mail = new PHPMailer;
-
-        // please look into the config/config.php for much more info on how to use this!
-        // use SMTP or use mail()
-        if (EMAIL_USE_SMTP) {
-            require_once(__DIR__ . '/libraries/SMTP.php');
-            // Set mailer to use SMTP
-            $mail->IsSMTP();
-            if (EMAIL_BODY_TYPE == 'html')
-                $mail->isHTML();
-            //useful for debugging, shows full SMTP errors
-            //$mail->SMTPDebug = 1; // debugging: 1 = errors and messages, 2 = messages only
-            // Enable SMTP authentication
-            $mail->SMTPAuth = EMAIL_SMTP_AUTH;
-            // Enable encryption, usually SSL/TLS
-            if (defined(EMAIL_SMTP_ENCRYPTION)) {
-                $mail->SMTPSecure = EMAIL_SMTP_ENCRYPTION;
-            }
-            // Specify host server
-            $mail->Host     = EMAIL_SMTP_HOST;
-            $mail->Username = EMAIL_SMTP_USERNAME;
-            $mail->Password = EMAIL_SMTP_PASSWORD;
-            $mail->Port     = EMAIL_SMTP_PORT;
-        } else {
-            $mail->IsMail();
-        }
-        return $mail;
-    }
-
     public function incrementLoginFails($user_email)
     {
-        $sth = $this->db_connection->prepare(
-            'UPDATE user SET
-                user_failed_logins = user_failed_logins+1,
-                user_last_failed_login = :user_last_failed_login
-             WHERE email = :user_email'
-        );
-        $sth->execute(array(':user_email' => $user_email, ':user_last_failed_login' => time()));
+        (new \AlxMq())->req('user[email=*]?user_failed_logins = user_failed_logins + 1, user_last_failed_login = *', 'si', [(string)$user_email, (int)time()]);
     }
 
     public function resetLoginFails($user_email)
     {
-        $sth = $this->db_connection->prepare(
-            'UPDATE user SET user_failed_logins = 0, user_last_failed_login = NULL
-            WHERE user_email = :user_email AND user_failed_logins != 0'
+        (new \AlxMq())->req(
+            'user[email=* && user_failed_logins != 0]?user_failed_logins = 0, user_last_failed_login = NULL',
+            's', [(string)$user_email]
         );
-        $sth->execute(array(':user_email' => $user_email));
     }
 
     public function deleteUser($user_email)
     {
-        $query_delete_user = $this->db_connection->prepare('DELETE FROM user WHERE email=:user_email');
-        $query_delete_user->bindValue(':user_email', $user_email, PDO::PARAM_INT);
-        $query_delete_user->execute();
+        (new \AlxMq())->req('user[email=*]:d', 's', [(string)$user_email]);
     }
 
     /**
@@ -419,7 +427,8 @@ class PHPLogin
             // http://www.gravatar.com/avatar/205e460b479e2e5b48aec07710c08d50?s=80&d=mm&r=g
             // note: the url does NOT have something like .jpg
             return 'http://www.gravatar.com/avatar/' . md5(strtolower(trim($_SESSION['user_email']))) . "?s=$s&d=$d&r=$r&f=y";
-        } else {
+        }
+        else {
             return '';
         }
     }
@@ -435,16 +444,10 @@ class PHPLogin
     {
         //
         // write users new hash into database
-        $query_update = $this->db_connection->prepare(
-            'UPDATE user SET
-               user_password_hash = :user_password_hash,user_password_reset_hash = NULL, user_password_reset_timestamp = NULL
-             WHERE email = :user_email AND user_password_reset_hash = :user_password_reset_hash'
+        return (new \AlxMq())->req(
+            'user[email = * && user_password_reset_hash = *]?user_password_hash=*,user_password_reset_hash=NULL,user_password_reset_timestamp=NULL',
+            'sss', [$user_email, $user_password_reset_hash, $user_password_hash]
         );
-        $query_update->bindValue(':user_password_hash', $user_password_hash, PDO::PARAM_STR);
-        $query_update->bindValue(':user_password_reset_hash', $user_password_reset_hash, PDO::PARAM_STR);
-        $query_update->bindValue(':user_email', $user_email, PDO::PARAM_STR);
-        $query_update->execute();
-        return $query_update;
     }
 
     /**
@@ -456,31 +459,34 @@ class PHPLogin
      */
     public function writeUsersPasswordResetTempHashIntoDB($user_password_reset_hash, $temporary_timestamp, $user_email)
     {
-        $query_update = $this->db_connection->prepare(
-            'UPDATE user SET
-               user_password_reset_hash = :user_password_reset_hash,
-               user_password_reset_timestamp = :user_password_reset_timestamp
-             WHERE email = :user_email'
+        return (new \AlxMq())->req(
+            'user[email=*]?user_password_reset_hash=*, user_password_reset_timestamp=*',
+            'si', [$user_password_reset_hash, (int)$temporary_timestamp]
         );
-        $query_update->bindValue(':user_password_reset_hash', $user_password_reset_hash, PDO::PARAM_STR);
-        $query_update->bindValue(':user_password_reset_timestamp', $temporary_timestamp, PDO::PARAM_INT);
-        $query_update->bindValue(':user_email', $user_email, PDO::PARAM_STR);
-        $query_update->execute();
-        return $query_update;
     }
 
-    public function writeUsersActiveStatusIntoDB($user_email, $user_activation_hash)
+    public function removeUserActivationHash($user_email, $user_activation_hash)
     {
-        $query_update_user = $this->db_connection->prepare(
-            'UPDATE user SET
-                user_active = 1, user_activation_hash = NULL
-             WHERE email = :user_email AND user_activation_hash = :user_activation_hash'
+        return (new \AlxMq())->req(
+            'user[email=*&&user_activation_hash=*]?user_activation_hash=NULL',
+            'ss',
+            [(string)trim($user_email), (string)$user_activation_hash]
         );
-        $query_update_user->bindValue(':user_email', trim($user_email), PDO::PARAM_STR);
-        $query_update_user->bindValue(':user_activation_hash', $user_activation_hash, PDO::PARAM_STR);
-        $query_update_user->execute();
-        return $query_update_user;
     }
+
+
+    public function writeUsersActiveStatusIntoDB($user_email, $user_activation_hash, $isAutoActivationOnce = false)
+    {
+        $if($isAutoActivationOnce){
+            $this->removeUserActivationHash($user_email, $user_activation_hash);
+        }
+        return (new \AlxMq())->req(
+            'user[email=* && user_activation_hash=*]?user_active = 1',
+            'ss',
+            [(string)trim($user_email), (string)$user_activation_hash]
+        );
+    }
+
 
     /**
      * write new users data into database
@@ -494,23 +500,21 @@ class PHPLogin
      */
     public function writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash)
     {
-        $user_id = $this->isUserExist($user_email);
-        $mq      = new AlxMq();
-        // if user exist
-        if ($user_id) {
+        // if user exist than try retrive his id
+        if ($this->isUserExist($user_email)) {
             // Update password's hashes
-            $mq->req(
+            (new \AlxMq)->req(
                 'user[id=*]?user_password_hash=*,user_activation_hash=*',
                 'iss',
                 [$user_id, $user_password_hash, $user_activation_hash]
             );
             return $user_id;
         }
-        // Add new user and Return new user's id
-        return $mq->req(
-            'user[user_name=*,email=*,user_password_hash=*,user_activation_hash=*,user_registration_ip=*]>'
-            , 'sssss'
-            , [$user_name, $user_email, $user_password_hash, $user_activation_hash, $_SERVER['REMOTE_ADDR']]
+        // Else Add new user and Return new user's id
+        return (new \AlxMq)->req(
+            'user[user_name=*,email=*,user_password_hash=*,user_activation_hash=*,user_registration_ip=*]>',
+            'sssss',
+            [$user_name, $user_email, $user_password_hash, $user_activation_hash, $_SERVER['REMOTE_ADDR']]
         );
     }
 
@@ -541,7 +545,7 @@ class PHPLogin
     {
         // check if we have a constant HASH_COST_FACTOR defined (in config/config.php),
         // if so: put the value into $hash_cost_factor, if not, make $hash_cost_factor = null
-        $hash_cost_factor = (defined('HASH_COST_FACTOR') ? HASH_COST_FACTOR : null);
+        $hash_cost_factor = $this->settings['HASH_COST_FACTOR'];
         // crypt the user's password with the PHP 5.5's password_hash() function, results in a 60 character hash string
         // the PASSWORD_DEFAULT constant is defined by the PHP 5.5, or if you are using PHP 5.3/5.4, by the password hashing
         // compatibility library. the third parameter looks a little bit shitty, but that's how those PHP 5.5 functions
@@ -557,18 +561,16 @@ class PHPLogin
      */
     function writeUserParamIntoDB($paramValue, $paramNameUntrusted)
     {
-        $paramName            = preg_replace('![^a-z0-9_-]!i', '', $paramNameUntrusted);
-        $query_edit_user_name = $this->db_connection->prepare(
-            "UPDATE user SET $paramName = :$paramName WHERE id = :user_id"
-        );
-        $query_edit_user_name->execute([":$paramName" => $paramValue, ':user_id' => $_SESSION['user_id']]);
+        $paramName = preg_replace('![^a-z0-9_-]!i', '', $paramNameUntrusted);
+        $isSuccess = (new \AlxMq)->req("user[id=*]?{$paramName}=*", 'is', [(int)$_SESSION['user_id'], (string)$paramValue]);
         //
-        if ($query_edit_user_name->rowCount()) {
+        if ($isSuccess) {
             $_SESSION[$paramName] = $paramValue;
-            $this->messages[]     = MESSAGE_USER_PARAM_CHANGED_SUCCESSFULLY . $paramValue;
+            $this->messages[]     = '%MESSAGE_USER_PARAM_CHANGED_SUCCESSFULLY%' . $paramValue;
             return true;
-        } else {
-            $this->errors[] = MESSAGE_USER_PARAM_CHANGE_FAILED;
+        }
+        else {
+            $this->errors[] = '%MESSAGE_USER_PARAM_CHANGE_FAILED%';
         }
         return false;
     }
@@ -585,43 +587,45 @@ class PHPLogin
      */
     public function writeNewExtraUserDataIntoDB($user_email, $extra, $link)
     {
-        require_once "$_SERVER[DOCUMENT_ROOT]/vendor/a-x-/backend/Mq.php";
         //
         // Insert extra data into linked table `origin_extra_{name}`
         // (link by `user_extra_{name}` table)
-        foreach ($extra as $extraName => $extraData) {
-            $extraName      = preg_replace('![^a-z0-9\-_]!i', '', $extraName);
-            $extraData      = preg_split('!,!', $extraData);
-            $extraNameNames = [];
-            $params         = []; // $params = [':user_email'=>$user_email];
-            foreach ($extraData as $extraDataEl) {
-                $extraDataEl      = preg_split('!:!', $extraDataEl);
-                $extraNameNames[] = $extraDataEl[0];
-                $params[]         = $extraDataEl[1];
+        if (!empty($extra) && is_array($extra))
+            foreach ($extra as $extraName => $extraData) {
+                $extraName      = preg_replace('![^a-z0-9\-_]!i', '', $extraName);
+                $extraData      = preg_split('!,!', $extraData);
+                $extraNameNames = [];
+                $params         = []; // $params = [':user_email'=>$user_email];
+                foreach ($extraData as $extraDataEl) {
+                    $extraDataEl      = preg_split('!:!', $extraDataEl);
+                    $extraNameNames[] = $extraDataEl[0];
+                    $params[]         = $extraDataEl[1];
+                }
+                $extraNameNames = join(',', $extraNameNames);
+                //
+                // write new users data into database
+                try {
+                    (new \AlxMq())->req("origin_extra_{$extraName}[$extraNameNames]>", str_repeat('s', \Invntrm\true_count($params)), $params);
+                } catch (Exception $e) {
+                    \Invntrm\bugReport2('user login with extra', $e);
+                }
+                try {
+                    (new \AlxMq())->req("user_extra_{$extraName}[user_email=*,origin_extra_{$extraName}_id=*]>", 'si', [$user_email]);
+                } catch (Exception $e) {
+                    \Invntrm\bugReport2('user login with extra', $e);
+                }
             }
-            $extraNameNames = join(',', $extraNameNames);
-            //
-            // write new users data into database
-            try {
-                (new \AlxMq())->req("origin_extra_{$extraName}[$extraNameNames]>", str_repeat('s', \Invntrm\true_count($params)), $params);
-            } catch (Exception $e) {
-                \Invntrm\bugReport2('user login with extra', $e);
-            }
-            try {
-                (new \AlxMq())->req("user_extra_{$extraName}[user_email=*,origin_extra_{$extraName}_id=*]>", 'si', [$user_email]);
-            } catch (Exception $e) {
-                \Invntrm\bugReport2('user login with extra', $e);
-            }
-        }
+
         //
         // Add link with `{name}` table
         // (link by `user_link_{name})` table
         try {
-            foreach ($link as $linkName => $linkValue) {
-                $linkName   = preg_replace('![^a-z0-9\-_]!i', '', $linkName);
-                $product_id = (new \AlxMq())->req("{$linkName}['$linkValue']?id");
-                (new \AlxMq())->req("user_link_{$linkName}[{$linkName}_id=*,user_email=*]>", 'is', [$product_id, $user_email]);
-            }
+            if (!empty($extra) && is_array($extra))
+                foreach ($link as $linkName => $linkValue) {
+                    $linkName   = preg_replace('![^a-z0-9\-_]!i', '', $linkName);
+                    $product_id = (new \AlxMq())->req("{$linkName}['$linkValue']?id");
+                    (new \AlxMq())->req("user_link_{$linkName}[{$linkName}_id=*,user_email=*]>", 'is', [$product_id, $user_email]);
+                }
         } catch (Exception $e) {
             \Invntrm\bugReport2('user login with links', $e);
         }

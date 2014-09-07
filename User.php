@@ -19,7 +19,7 @@ namespace User {
         $_SESSION = array();
         session_destroy();
         //
-        $login->messages[] = MESSAGE_LOGGED_OUT;
+        $login->messages[] = '%MESSAGE_LOGGED_OUT%';
     }
 
 
@@ -49,7 +49,7 @@ namespace User\Signin {
                 break;
             case('ok'):
                 $next_state = 'exit';
-                if (!\User\Signin\ok($user_object, $user_password, $user_rememberme)) break;
+                if (!\User\Signin\ok($user_password, $user_rememberme)) break;
                 break;
             case('exit'):
                 header('Location: /profile/?logged-in'
@@ -66,12 +66,12 @@ namespace User\Signin {
         while (true) {
             $user_email = trim($user_email);
             if (empty($user_password)) {
-                $login->errors[] = MESSAGE_PASSWORD_EMPTY;
+                $login->errors[] = '%MESSAGE_PASSWORD_EMPTY%';
                 // if POST data (from login form) contains non-empty user_email and non-empty user_password
                 break;
             }
             if (empty($user_email) || !filter_var($user_email, FILTER_VALIDATE_EMAIL)) {
-                $login->errors[] = MESSAGE_EMAIL_INVALID;
+                $login->errors[] = '%MESSAGE_EMAIL_INVALID%';
                 break;
             }
             //
@@ -79,25 +79,25 @@ namespace User\Signin {
             $user_object = $login->getUserDataFromEmail($user_email);
             //
             // if this user not exists
-            if (!isset($user_object->id)) {
-                // was MESSAGE_USER_DOES_NOT_EXIST before, but has changed to MESSAGE_LOGIN_FAILED
+            if (!isset($user_object['id'])) {
+                // was '%MESSAGE_USER_DOES_NOT_EXIST%' before, but has changed to '%MESSAGE_LOGIN_FAILED%'
                 // to prevent potential attackers showing if the user exists
-                $login->errors[] = MESSAGE_LOGIN_FAILED;
+                $login->errors[] = '%MESSAGE_LOGIN_FAILED%';
                 break;
             }
-            if ($user_object->user_active != 1) {
-                $login->errors[] = MESSAGE_ACCOUNT_NOT_ACTIVATED;
+            if ($user_object['user_active'] != 1) {
+                $login->errors[] = '%MESSAGE_ACCOUNT_NOT_ACTIVATED%';
                 break;
             }
-            if (($user_object->user_failed_logins >= 3) && ($user_object->user_last_failed_login > (time() - 30))) {
-                $login->errors[] = MESSAGE_PASSWORD_WRONG_3_TIMES;
+            if (($user_object['user_failed_logins'] >= 3) && ($user_object['user_last_failed_login'] > (time() - 30))) {
+                $login->errors[] = '%MESSAGE_PASSWORD_WRONG_3_TIMES%';
                 // using PHP 5.5's password_verify() function to check if the provided passwords fits to the hash of that user's password
                 break;
             }
-            if (!password_verify($user_password, $user_object->user_password_hash)) {
+            if (!password_verify($user_password, $user_object['user_password_hash'])) {
                 // increment the failed login counter for that user
                 $login->incrementLoginFails($user_email);
-                $login->errors[] = MESSAGE_PASSWORD_WRONG;
+                $login->errors[] = '%MESSAGE_PASSWORD_WRONG%';
                 // has the user activated their account with the verification email
                 break;
             }
@@ -106,10 +106,10 @@ namespace User\Signin {
         return false;
     }
 
-    function ok($user_object, $user_password, $user_rememberme)
+    function ok($user_password, $user_rememberme)
     {
         global $login;
-        $user_object = (array)$user_object;
+        $user_object = $login->getUserDataFromEmail($user_email);
         $login->writeUserDataIntoSession($user_object); // write user data into PHP SESSION [a file on your server]
         // reset the failed login counter for that user
         $login->resetLoginFails($user_object['email']);
@@ -122,9 +122,9 @@ namespace User\Signin {
         // by default the script will use a cost factor of 10 and never change it.
         // check if the have defined a cost factor in config/hashing.php
         try {
-            if (defined('HASH_COST_FACTOR')) {
+            if ($login->setting('HASH_COST_FACTOR') && !empty($user_password)) {
                 // check if the hash needs to be rehashed
-                if (password_needs_rehash($user_object['user_password_hash'], PASSWORD_DEFAULT, array('cost' => HASH_COST_FACTOR))) {
+                if (password_needs_rehash($user_object['user_password_hash'], PASSWORD_DEFAULT, ['cost' => $login->setting('HASH_COST_FACTOR')])) {
                     $rehashingStatus = $login->writeNewPasswordIntoDB($user_password);
                     if ($rehashingStatus) {
                         // @todo writing new hash was successful. you should now output this to the user ;)
@@ -152,6 +152,7 @@ namespace User\Signup {
         $user_password_hash   = $login->getPasswordHash($user_password_new); // crypt the user's password with the PHP 5.5's password_hash() function.
         $user_activation_hash = sha1(uniqid(mt_rand(), true));// generate random hash for email verification (40 char string)
         $user_id              = $login->writeNewUserDataIntoDB($user_name, $user_email, $user_password_hash, $user_activation_hash);
+        $_SESSION['tmp_user_password_new'] = $user_password_new;
         return !empty($user_id) ? [$user_activation_hash, $user_id] : false;
     }
 
@@ -184,32 +185,31 @@ namespace User\Signup {
         //
         // check provided data validity
         if (!ALLOW_NO_CAPTCHA && strtolower($captcha) != strtolower($_SESSION['captcha'])) {
-            $login->errors[] = MESSAGE_CAPTCHA_WRONG;
+            $login->errors[] = '%MESSAGE_CAPTCHA_WRONG%';
         } elseif (empty($user_name)) {
-            $login->errors[] = MESSAGE_USERNAME_EMPTY;
+            $login->errors[] = '%MESSAGE_USERNAME_EMPTY%';
         } elseif (!ALLOW_NO_PASSWORD && empty($user_password_new) || !ALLOW_NO_PASSWORD_RETYPE && empty($user_password_repeat)) {
-            $login->errors[] = MESSAGE_PASSWORD_EMPTY;
+            $login->errors[] = '%MESSAGE_PASSWORD_EMPTY%';
         } elseif (!ALLOW_NO_PASSWORD_RETYPE && $user_password_new !== $user_password_repeat) {
-            $login->errors[] = MESSAGE_PASSWORD_BAD_CONFIRM;
+            $login->errors[] = '%MESSAGE_PASSWORD_BAD_CONFIRM%';
         } elseif (!ALLOW_NO_PASSWORD && strlen($user_password_new) < 6) {
-            $login->errors[] = MESSAGE_PASSWORD_TOO_SHORT;
+            $login->errors[] = '%MESSAGE_PASSWORD_TOO_SHORT%';
         } elseif (strlen($user_name) > 64 || strlen($user_name) < 2) {
-            $login->errors[] = MESSAGE_USERNAME_BAD_LENGTH;
+            $login->errors[] = '%MESSAGE_USERNAME_BAD_LENGTH%';
         } elseif (!preg_match($login->USER_NAME_VERIFICATION_REGEX, $user_name)) {
-            $login->errors[] = MESSAGE_USERNAME_INVALID;
+            $login->errors[] = '%MESSAGE_USERNAME_INVALID%';
         } elseif (empty($user_email)) {
-            $login->errors[] = MESSAGE_EMAIL_EMPTY;
+            $login->errors[] = '%MESSAGE_EMAIL_EMPTY%';
         } elseif (strlen($user_email) > 254) {
-            $login->errors[] = MESSAGE_EMAIL_TOO_LONG;
+            $login->errors[] = '%MESSAGE_EMAIL_TOO_LONG%';
         } elseif (!filter_var($user_email, FILTER_VALIDATE_EMAIL)) {
-            $login->errors[] = MESSAGE_EMAIL_INVALID;
+            $login->errors[] = '%MESSAGE_EMAIL_INVALID%';
             //
             // finally if all the above checks are ok
         } else {
-            $result_row = $login->getUserDataFromEmail($user_email);
             // if email already in the database
-            if (isset($result_row->id)) {
-                $login->errors[] = MESSAGE_EMAIL_ALREADY_EXISTS;
+            if ($login->isUserExist($user_email)) {
+                $login->errors[] = '%MESSAGE_EMAIL_ALREADY_EXISTS%';
                 //
                 // Ok user can be create
             } else {
@@ -217,16 +217,23 @@ namespace User\Signup {
                 $login->writeNewExtraUserDataIntoDB($user_email, $extraFields, $linkFields);
                 if ($user_activation_hash) {
                     // send a verification email
-                    if (\User\Signup\sendVerifyMail($user_email, $user_activation_hash)) {
+                    try {
+                        $isVerifyMailSent = \User\Signup\sendVerifyMail($user_email, $user_activation_hash);
+                    }
+                    catch(\Exception $e) {
+                        \Invntrm\bugReport2('signup,sendVerifiMail',$e);
+                        $isVerifyMailSent = false;
+                    }
+                    if ($isVerifyMailSent) {
                         // when mail has been send successfully
-                        $login->messages[] = MESSAGE_VERIFICATION_MAIL_SENT;
+                        $login->messages[] = '%MESSAGE_VERIFICATION_MAIL_SENT%';
                     } else {
                         // delete this users account immediately, as we could not send a verification email
                         $login->deleteUser($user_email);
-                        $login->errors[] = MESSAGE_VERIFICATION_MAIL_ERROR;
+                        $login->errors[] = '%MESSAGE_VERIFICATION_MAIL_ERROR%';
                     }
                 } else {
-                    $login->errors[] = MESSAGE_REGISTRATION_FAILED;
+                    $login->errors[] = '%MESSAGE_REGISTRATION_FAILED%';
                 }
             }
         }
@@ -243,24 +250,24 @@ namespace User\Signup {
     function sendVerifyMail($user_email, $user_activation_hash)
     {
         global $login;
-        $mail = $login->getPHPMailerObject();
+        $toAddress = $user_email;
+        $subject = $login->setting('EMAIL_VERIFICATION_SUBJECT');
         //
-        $mail->From     = EMAIL_VERIFICATION_FROM;
-        $mail->FromName = EMAIL_VERIFICATION_FROM_NAME;
-        $mail->AddAddress($user_email);
-        $mail->Subject = EMAIL_VERIFICATION_SUBJECT;
-        //
-        $link = "http://$_SERVER[HTTP_HOST]/profile/signup/verification/?"
+        $link = $login->setting('BASE_VIEW_ENDPOINT_ABSOLUTE') . "/signup/verification/?"
             . http_build_query(['email' => $user_email, 'code' => $user_activation_hash]);
-        //
-        // the link to your register.php, please set this value in config/email_verification.php
-        if (EMAIL_BODY_TYPE == 'html') {
-            $link = "<a href='$link'>" . WORDING_LETTER_SUBMIT . "</a>";
-        }
-        $mail->Body = \Invntrm\specifyTemplate(EMAIL_VERIFICATION_CONTENT, ['link' => $link]);
-        //
-        if (!$mail->Send()) {
-            $login->errors[] = MESSAGE_VERIFICATION_MAIL_NOT_SENT . $mail->ErrorInfo;
+        try{
+            $isMailSuccess = mailProject(
+                \Invntrm\buildPage($login->setting('MAIL_TEMPLATES_DIR') . '/signup/', [
+                    'password'=>$_SESSION['tmp_user_password_new'],
+                    'auto-signin-link' => $link
+                ]),
+                $user_email,
+                'Подтверждение'
+            );
+            unset($_SESSION['tmp_user_password_new']);
+        } catch (\Exception $e) { \Invntrm\bugReport2('signup fail', $e); $isMailSuccess = false; }
+        if (!$isMailSuccess) {
+            $login->errors[] = '%MESSAGE_VERIFICATION_MAIL_NOT_SENT%';
             return false;
         } else {
             return true;
@@ -278,31 +285,29 @@ namespace User\Signup {
     {
         global $login;
         if (empty($user_activation_hash)) {
-            $login->errors[] = MESSAGE_LINK_PARAMETER_EMPTY;
+            $login->errors[] = '%MESSAGE_LINK_PARAMETER_EMPTY%';
         }
         if (empty($user_email)) {
-            $login->errors[] = MESSAGE_EMAIL_EMPTY;
+            $login->errors[] = '%MESSAGE_EMAIL_EMPTY%';
         }
         // if database connection opened
-        if ($login->databaseConnection()) {
-            // try to update user with specified information
-            $query_update_user = $login->writeUsersActiveStatusIntoDB($user_email, $user_activation_hash);
-            //
-            if ($query_update_user->rowCount() > 0) {
-                if (ALLOW_AUTO_SIGNIN_AFTER_VERIFY) {
-                    $login->writeUserDataIntoSession($login->getUserDataFromEmail($user_email));
-                }
-                header('Location: ' . '/profile/?message=%MESSAGE_REGISTRATION_ACTIVATION_SUCCESSFUL%');
-            } else {
-                // send bug report
-                \Invntrm\bugReport2(
-                    'PHPLogin::verifyMailCode', 'verification finish stage failed on the BD recording: '
-                    . \Invntrm\varDumpRet($query_update_user)
-                );
-                // delete this users account immediately, as we could not send a verification email
-                $login->deleteUser($user_email);
-                header('Location: ' . '/profile/signup/?error=%MESSAGE_REGISTRATION_ACTIVATION_NOT_SUCCESSFUL%');
+        // try to update user with specified information
+        $query_update_user = $login->writeUsersActiveStatusIntoDB($user_email, $user_activation_hash);
+        //
+        if ($query_update_user) {
+            if ($login->setting('ALLOW_AUTO_SIGNIN_AFTER_VERIFY')) {
+                \User\Signin\ok(null, $login->setting('ALLOW_REMEMBERME_BY_DEFAULT'));
             }
+            header('Location: ' . $login->setting('BASE_VIEW_ENDPOINT') . '/?message=%MESSAGE_REGISTRATION_ACTIVATION_SUCCESSFUL%');
+        } else {
+            // send bug report
+            \Invntrm\bugReport2(
+                'PHPLogin::verifyMailCode', 'verification finish stage failed on the BD recording: '
+                . \Invntrm\varDumpRet($query_update_user)
+            );
+            // delete this users account immediately, as we could not send a verification email
+            $login->deleteUser($user_email);
+            header('Location: ' . $login->setting('BASE_VIEW_ENDPOINT') . '/signup/?error=%MESSAGE_REGISTRATION_ACTIVATION_NOT_SUCCESSFUL%');
         }
     }
 
@@ -326,7 +331,7 @@ namespace User\Reset {
         $user_email = trim($user_email);
         //
         if (empty($user_email)) {
-            $login->errors[] = MESSAGE_USERNAME_EMPTY;
+            $login->errors[] = '%MESSAGE_USERNAME_EMPTY%';
         } else {
             // generate timestamp (to see when exactly the user (or an attacker) requested the password reset mail)
             // btw this is an integer ;)
@@ -334,24 +339,24 @@ namespace User\Reset {
             // generate random hash for email password reset verification (40 char string)
             $user_password_reset_hash = sha1(uniqid(mt_rand(), true));
             // database query, getting all the info of the selected user
-            $result_row = $login->getUserDataFromEmail($user_email);
+            $user_data = $login->getUserDataFromEmail($user_email);
             //
             // if this user exists
-            if (isset($result_row->id)) {
+            if ($user_data) {
                 //
                 // store his password_reset_hash in the DB
-                $query_update = $login->writeUsersPasswordResetTempHashIntoDB($user_password_reset_hash, $temporary_timestamp, $user_email);
+                $isHashStored = $login->writeUsersPasswordResetTempHashIntoDB($user_password_reset_hash, $temporary_timestamp, $user_email);
                 //
                 // check if exactly one row was successfully changed:
-                if ($query_update->rowCount() == 1) {
+                if ($isHashStored) {
                     // send a mail to the user, containing a link with that token hash string
-                    \User\Reset\sendVerifyMail($result_row->email, $user_password_reset_hash);
+                    \User\Reset\sendVerifyMail($user_data['email'], $user_password_reset_hash);
                     return true;
                 } else {
-                    $login->errors[] = MESSAGE_DATABASE_ERROR;
+                    $login->errors[] = '%MESSAGE_DATABASE_ERROR%';
                 }
             } else {
-                $login->errors[] = MESSAGE_USER_DOES_NOT_EXIST;
+                $login->errors[] = '%MESSAGE_USER_DOES_NOT_EXIST%';
             }
         }
         // return false (this method only returns true when the database entry has been set successfully)
@@ -360,6 +365,8 @@ namespace User\Reset {
 
 
     /**
+     * @deprecated
+     * @todo довести
      * 2.
      * Sends the password-reset-email.
      *
@@ -371,28 +378,27 @@ namespace User\Reset {
     function sendVerifyMail($user_email, $verification_code)
     {
         global $login;
-        $mail           = $login->getPHPMailerObject();
-        $mail->From     = EMAIL_PASSWORDRESET_FROM;
-        $mail->FromName = EMAIL_PASSWORDRESET_FROM_NAME;
-        $mail->AddAddress($user_email);
-        $mail->Subject = EMAIL_PASSWORDRESET_SUBJECT;
+        $toAddress = $user_email;
+        $subject = $login->setting('EMAIL_VERIFICATION_SUBJECT');
         //
-        $link = 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'] . '?password_reset&'
-            . http_build_query(['user_email' => $user_email, 'verification_code' => $verification_code]);
-        if (EMAIL_BODY_TYPE == 'html') {
-            $link = "<a href='$link'>" . WORDING_LETTER_SUBMIT . "</a>";
-        }
-        $mail->Body = \Invntrm\specifyTemplate(EMAIL_PASSWORDRESET_CONTENT, ['link' => $link]);
-        //
-        if (!$mail->Send()) {
-            $login->errors[] = MESSAGE_PASSWORD_RESET_MAIL_FAILED . $mail->ErrorInfo;
+        $link = $login->setting('BASE_VIEW_ENDPOINT_ABSOLUTE') . "/reset/verification/?"
+            . http_build_query(['email' => $user_email, 'code' => $verification_code]);
+        try{
+            $isMailSuccess = mailProject(
+                \Invntrm\buildPage($login->setting('MAIL_TEMPLATES_DIR') . '/reset/', [
+                    'reset-link' => $link
+                ]),
+                $user_email,
+                'Сброс пароля'
+            );
+        } catch (\Exception $e) { \Invntrm\bugReport2('signup fail', $e); $isMailSuccess = false; }
+        if (!$isMailSuccess) {
+            $login->errors[] = '%MESSAGE_VERIFICATION_MAIL_NOT_SENT%';
             return false;
         } else {
-            $login->messages[] = MESSAGE_PASSWORD_RESET_MAIL_SUCCESSFULLY_SENT;
             return true;
         }
     }
-
 
     /**
      * @deprecated
@@ -408,23 +414,23 @@ namespace User\Reset {
         global $login;
         $user_email = trim($user_email);
         if (empty($user_email) || empty($verification_code)) {
-            $login->errors[] = MESSAGE_LINK_PARAMETER_EMPTY;
+            $login->errors[] = '%MESSAGE_LINK_PARAMETER_EMPTY%';
         } else {
             // database query, getting all the info of the selected user
-            $result_row = $login->getUserDataFromEmail($user_email);
+            $user_object = $login->getUserDataFromEmail($user_email);
             //
             // if this user exists and have the same hash in database
-            if (isset($result_row->id) && $result_row->user_password_reset_hash == $verification_code) {
+            if (isset($user_object['id']) && $user_object['user_password_reset_hash'] == $verification_code) {
                 $timestamp_one_hour_ago = time() - 3600; // 3600 seconds are 1 hour
                 //
-                if ($result_row->user_password_reset_timestamp > $timestamp_one_hour_ago) {
+                if ($user_object['user_password_reset_timestamp'] > $timestamp_one_hour_ago) {
                     // set the marker to true, making it possible to show the password reset edit form view
                     $login->password_reset_link_is_valid = true;
                 } else {
-                    $login->errors[] = MESSAGE_RESET_LINK_HAS_EXPIRED;
+                    $login->errors[] = '%MESSAGE_RESET_LINK_HAS_EXPIRED%';
                 }
             } else {
-                $login->errors[] = MESSAGE_USER_DOES_NOT_EXIST;
+                $login->errors[] = '%MESSAGE_USER_DOES_NOT_EXIST%';
             }
         }
     }
@@ -448,25 +454,25 @@ namespace User\Reset {
         $user_email = trim($user_email);
         //
         if (empty($user_email) || empty($user_password_reset_verify_code) || empty($user_password_new) || empty($user_password_repeat)) {
-            $login->errors[] = MESSAGE_PASSWORD_EMPTY;
+            $login->errors[] = '%MESSAGE_PASSWORD_EMPTY%';
             // is the repeat password identical to password
         } else if ($user_password_new !== $user_password_repeat) {
-            $login->errors[] = MESSAGE_PASSWORD_BAD_CONFIRM;
+            $login->errors[] = '%MESSAGE_PASSWORD_BAD_CONFIRM%';
             // password need to have a minimum length of 6 characters
         } else if (strlen($user_password_new) < 6) {
-            $login->errors[] = MESSAGE_PASSWORD_TOO_SHORT;
+            $login->errors[] = '%MESSAGE_PASSWORD_TOO_SHORT%';
             // if database connection opened
-        } else if ($login->databaseConnection()) {
+        } else {
             // crypt the user's password with the PHP 5.5's password_hash() function.
             $user_password_hash = $login->getPasswordHash($user_password_new);
-            $query_update       = $login->writeUsersNewHashIntoDB($user_password_hash, $user_password_reset_verify_code, $user_email);
+            $is_update_success       = $login->writeUsersNewHashIntoDB($user_password_hash, $user_password_reset_verify_code, $user_email);
             //
             // check if exactly one row was successfully changed:
-            if ($query_update->rowCount() == 1) {
+            if ($is_update_success) {
                 $login->password_reset_was_successful = true;
-                $login->messages[]                    = MESSAGE_PASSWORD_CHANGED_SUCCESSFULLY;
+                $login->messages[] = '%MESSAGE_PASSWORD_CHANGED_SUCCESSFULLY%';
             } else {
-                $login->errors[] = MESSAGE_PASSWORD_CHANGE_FAILED;
+                $login->errors[] = '%MESSAGE_PASSWORD_CHANGE_FAILED%';
             }
         }
     }
@@ -488,10 +494,10 @@ namespace User\Edit {
         $user_name = substr(trim($user_name), 0, 64);
         //
         if (!empty($user_name) && $user_name == $_SESSION['user_name']) {
-            $login->errors[] = MESSAGE_USERNAME_SAME_LIKE_OLD_ONE;
+            $login->errors[] = '%MESSAGE_USERNAME_SAME_LIKE_OLD_ONE%';
             // username cannot be empty and must be <...> and 2-64 characters
         } elseif (empty($user_name) || !preg_match($login->USER_NAME_VERIFICATION_REGEX, $user_name)) {
-            $login->errors[] = MESSAGE_USERNAME_INVALID;
+            $login->errors[] = '%MESSAGE_USERNAME_INVALID%';
         } else {
             // write user's new data into database
             $login->writeUserParamIntoDB($user_name, 'user_name');
@@ -511,16 +517,14 @@ namespace User\Edit {
         $user_email = substr(trim($user_email), 0, 254);
         //
         if (!empty($user_email) && $user_email == $_SESSION["user_email"]) {
-            $login->errors[] = MESSAGE_EMAIL_SAME_LIKE_OLD_ONE;
+            $login->errors[] = '%MESSAGE_EMAIL_SAME_LIKE_OLD_ONE%';
             // user mail cannot be empty and must be in email format
         } elseif (empty($user_email) || !filter_var($user_email, FILTER_VALIDATE_EMAIL)) {
-            $login->errors[] = MESSAGE_EMAIL_INVALID;
+            $login->errors[] = '%MESSAGE_EMAIL_INVALID%';
         } else {
-            // check if new email already exists
-            $result_row = $login->getUserDataFromEmail($user_email);
             // if this email exists
-            if (isset($result_row->id)) {
-                $login->errors[] = MESSAGE_EMAIL_ALREADY_EXISTS;
+            if ($login->isUserExist($user_email)) {
+                $login->errors[] = '%MESSAGE_EMAIL_ALREADY_EXISTS%';
             } else {
                 //
                 // write users new data into database
@@ -541,23 +545,23 @@ namespace User\Edit {
         $user_password_new    = $user_password['new'];
         $user_password_repeat = $user_password['repeat'];
         if (empty($user_password_new) || empty($user_password_repeat) || empty($user_password_old)) {
-            $login->errors[] = MESSAGE_PASSWORD_EMPTY;
+            $login->errors[] = '%MESSAGE_PASSWORD_EMPTY%';
             // is the repeat password identical to password
         } elseif ($user_password_new !== $user_password_repeat) {
-            $login->errors[] = MESSAGE_PASSWORD_BAD_CONFIRM;
+            $login->errors[] = '%MESSAGE_PASSWORD_BAD_CONFIRM%';
             // password need to have a minimum length of 6 characters
         } elseif (strlen($user_password_new) < 6) {
-            $login->errors[] = MESSAGE_PASSWORD_TOO_SHORT;
+            $login->errors[] = '%MESSAGE_PASSWORD_TOO_SHORT%';
             // all the above tests are ok
         } else {
             // database query, getting hash of currently logged in user (to check with just provided password)
-            $result_row = $login->getUserDataFromEmail($_SESSION['user_email']);
+            $user_object = $login->getUserDataFromEmail($_SESSION['user_email']);
             // if this user exists
-            if (!isset($result_row->user_password_hash)) {
-                $login->errors[] = MESSAGE_USER_DOES_NOT_EXIST;
+            if (!isset($user_object['user_password_hash'])) {
+                $login->errors[] = '%MESSAGE_USER_DOES_NOT_EXIST%';
             } // using PHP 5.5's password_verify() function to check if the provided passwords fits to the hash of that user's password
-            elseif (!password_verify($user_password_old, $result_row->user_password_hash)) {
-                $login->errors[] = MESSAGE_OLD_PASSWORD_WRONG;
+            elseif (!password_verify($user_password_old, $user_object['user_password_hash'])) {
+                $login->errors[] = '%MESSAGE_OLD_PASSWORD_WRONG%';
             } else {
                 $login->writeNewPasswordIntoDB($user_password_new);
             }
@@ -582,6 +586,7 @@ namespace User\Process {
      */
     function signup($login)
     {
+        \Invntrm\_d(['signup,check',$login->REQUEST_METHOD, $login->REQUEST_PATH, $login->REQUEST_PATH_API, $_POST]);
         //
         // 1.
         // if we have such a POST request, call the checkPostData() method
@@ -591,7 +596,7 @@ namespace User\Process {
             try {
                 \User\Signup\checkPostData($_POST['user_name'], $_POST['user_email'], @$_POST["opt"], @$_POST['extra'], @$_POST['link']);
             } catch (\Exception $e) {
-                \Invntrm\bugReport2('', $e);
+                \Invntrm\bugReport2('signup fail', $e);
                 return false;
             }
         } else return false;
