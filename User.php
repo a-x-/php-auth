@@ -5,7 +5,7 @@
  */
 namespace User {
     require_once 'PHPLogin.php';
-    require_once "$_SERVER[DOCUMENT_ROOT]/_ass/common.php";
+    require_once __DIR__ . "/../../../_ass/common.php";
 
     /**
      * @deprecated
@@ -16,7 +16,7 @@ namespace User {
         global $login;
         $login->deleteRememberMeCookie();
         //
-        $_SESSION = array();
+        $_SESSION = [];
         session_destroy();
         //
         $login->messages[] = '%MESSAGE_LOGGED_OUT%';
@@ -146,7 +146,7 @@ namespace User\Signup {
         global $login;
         if($user_id = $login->isUserExist($user_email))
             return [null,$user_id];
-        if (ALLOW_NO_PASSWORD && !$user_password_new) {
+        if ($login->setting('ALLOW_NO_PASSWORD') && !$user_password_new) {
             $user_password_new = \Invntrm\generateStrongPassword();
         }
         $user_password_hash   = $login->getPasswordHash($user_password_new); // crypt the user's password with the PHP 5.5's password_hash() function.
@@ -184,15 +184,15 @@ namespace User\Signup {
         $user_password_new    = (isset($additionFields['user_password_new'])) ? trim($additionFields['user_password_new']) : '';
         //
         // check provided data validity
-        if (!ALLOW_NO_CAPTCHA && strtolower($captcha) != strtolower($_SESSION['captcha'])) {
+        if (!$login->setting('ALLOW_NO_CAPTCHA') && strtolower($captcha) != strtolower($_SESSION['captcha'])) {
             $login->errors[] = '%MESSAGE_CAPTCHA_WRONG%';
         } elseif (empty($user_name)) {
             $login->errors[] = '%MESSAGE_USERNAME_EMPTY%';
-        } elseif (!ALLOW_NO_PASSWORD && empty($user_password_new) || !ALLOW_NO_PASSWORD_RETYPE && empty($user_password_repeat)) {
+        } elseif (!$login->setting('ALLOW_NO_PASSWORD') && empty($user_password_new) || !$login->setting('ALLOW_NO_PASSWORD_RETYPE') && empty($user_password_repeat)) {
             $login->errors[] = '%MESSAGE_PASSWORD_EMPTY%';
-        } elseif (!ALLOW_NO_PASSWORD_RETYPE && $user_password_new !== $user_password_repeat) {
+        } elseif (!$login->setting('ALLOW_NO_PASSWORD_RETYPE') && $user_password_new !== $user_password_repeat) {
             $login->errors[] = '%MESSAGE_PASSWORD_BAD_CONFIRM%';
-        } elseif (!ALLOW_NO_PASSWORD && strlen($user_password_new) < 6) {
+        } elseif (!$login->setting('ALLOW_NO_PASSWORD') && strlen($user_password_new) < 6) {
             $login->errors[] = '%MESSAGE_PASSWORD_TOO_SHORT%';
         } elseif (strlen($user_name) > 64 || strlen($user_name) < 2) {
             $login->errors[] = '%MESSAGE_USERNAME_BAD_LENGTH%';
@@ -302,7 +302,7 @@ namespace User\Signup {
         } else {
             // send bug report
             \Invntrm\bugReport2(
-                'PHPLogin::verifyMailCode', 'verification finish stage failed on the BD recording: '
+                'PHPLogin::verifyMailCode', 'verification finish stage failed on the DB recording: '
                 . \Invntrm\varDumpRet($query_update_user)
             );
             // delete this users account immediately, as we could not send a verification email
@@ -617,7 +617,9 @@ namespace User\Process {
             $login->REQUEST_PATH_API == '/' && $login->REQUEST_METHOD == 'put'
             && isset($_REQUEST['verified'])
         ) {
-            \User\Signup\verifyMailCode(@$_REQUEST["email"], @$_REQUEST["code"]);
+            $email = \Invntrm\true_get($_REQUEST, 'email');
+            $code = \Invntrm\true_get($_REQUEST, 'code');
+            \User\Signup\verifyMailCode($email, $code);
         } else return false;
         return true;
     }
@@ -642,7 +644,10 @@ namespace User\Process {
         if (
             $login->REQUEST_PATH_API == '/signin' && $login->REQUEST_METHOD == 'post'
         ) {
-            \User\Signin\signin($_POST['user_email'], $_POST['user_password'], @$_POST['user_rememberme']);
+            $email = \Invntrm\true_get($_POST, 'user_email');
+            $password = \Invntrm\true_get($_POST, 'user_password');
+            $rememberme = \Invntrm\true_get($_POST, 'user_rememberme');
+            \User\Signin\signin($email, $password, $rememberme);
         } else
             return false;
         return true;
@@ -655,22 +660,26 @@ namespace User\Process {
     function reset()
     {
         global $login;
+        global $_PUT;
+        $email = \Invntrm\true_get($_PUT, 'user_email');
+        $password = \Invntrm\true_get($_PUT, 'user_password');
+        $code = \Invntrm\true_get($_PUT, 'code');
         //
         // 1.3.
         // checking if user requested a password reset mail
         if (
             $login->REQUEST_PATH_API == '/' && $login->REQUEST_METHOD == 'put'
-            && isset($_REQUEST['password'])
+            && isset($_PUT['password'])
         ) {
-            \User\Reset\checkPostData(@$_REQUEST['user_email']);
-        } elseif (isset($_REQUEST["user_email"]) && isset($_REQUEST["code"])) {
-            \User\Reset\verifyMailCode($_REQUEST["user_email"], $_REQUEST["code"]);
-        } elseif (isset($_POST["submit_new_password"])) {
+            \User\Reset\checkPostData($email);
+        } elseif (isset($_PUT["user_email"]) && isset($_PUT["code"])) {
+            \User\Reset\verifyMailCode($email, $code);
+        } elseif (isset($_PUT["submit_new_password"])) {
             \User\Reset\writeNewPassword(
-                $_REQUEST['user_email'],
-                $_REQUEST['verification_code'],
-                $_REQUEST['user_password_new'],
-                $_REQUEST['user_password_repeat']
+                $_PUT['user_email'],
+                $_PUT['verification_code'],
+                $_PUT['user_password_new'],
+                $_PUT['user_password_repeat']
             );
         }
         return true;
@@ -684,6 +693,7 @@ namespace User\Process {
     function edit()
     {
         global $login;
+        global $_PUT;
         //
         // 1.1.
         // User want change his profile // checking for form submit from editing screen
@@ -691,9 +701,9 @@ namespace User\Process {
             $login->REQUEST_PATH_API == '/' && $login->REQUEST_METHOD == 'put'
         ) {
             // function below uses $_SESSION['user_id'] et $_SESSION['user_email']
-            if (!empty($_REQUEST['user_name'])) \User\Edit\name($_POST['user_name']);
-            if (!empty($_REQUEST['user_email'])) \User\Edit\email($_POST['user_email']);
-            if (!empty($_REQUEST['user_password'])) \User\Edit\password($_POST['user_password']);
+            if (!empty($_PUT['user_name'])) \User\Edit\name($_PUT['user_name']);
+            if (!empty($_PUT['user_email'])) \User\Edit\email($_PUT['user_email']);
+            if (!empty($_PUT['user_password'])) \User\Edit\password($_PUT['user_password']);
         } else return false;
         return true;
     }

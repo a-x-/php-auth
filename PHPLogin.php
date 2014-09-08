@@ -13,10 +13,6 @@ class PHPLogin
 {
     public $ADMIN_LEVEL = 255;
     /**
-     * @var \PDO $db_connection The database connection
-     */
-    public $db_connection = null;
-    /**
      * @var boolean $password_reset_link_is_valid Marker for view handling
      */
     public $password_reset_link_is_valid = false;
@@ -27,11 +23,11 @@ class PHPLogin
     /**
      * @var array $errors Collection of error messages
      */
-    public $errors = array();
+    public $errors = [];
     /**
      * @var array $messages Collection of success / neutral messages
      */
-    public $messages = array();
+    public $messages = [];
 
     public $USER_NAME_VERIFICATION_REGEX = '';
 
@@ -43,10 +39,7 @@ class PHPLogin
 
     private $settings = [];
 
-    public function setting($key)
-    {
-        return \Invntrm\true_get($this->settings, $key);
-    }
+    public function setting($key){return \Invntrm\true_get($this->settings, $key);}
 
     /**
      * the function "__construct()" automatically starts whenever an object of this class is created,
@@ -108,8 +101,8 @@ class PHPLogin
              */
             'HASH_COST_FACTOR'                 => 10,
             'EMAIL'                            => [
-                'NAME'                 => PROJECT_NAME,
-                'ADDRESS'              => MAILER_EMAIL,
+                'NAME'                 => 'Проект',
+                'ADDRESS'              => '',
                 'VERIFICATION_SUBJECT' => 'Подтверждение',
                 'RESET_SUBJECT'        => 'Сброс парполя',
 
@@ -266,7 +259,7 @@ class PHPLogin
         //
         // generate cookie string that consists of userid, random string and combined hash of both
         $cookie_string_first_part = $_SESSION['user_id'] . ':' . $random_token_string;
-        $cookie_string_hash       = hash('sha256', $cookie_string_first_part . COOKIE_SECRET_KEY);
+        $cookie_string_hash       = hash('sha256', $cookie_string_first_part . $this->settings['COOKIE_SECRET_KEY']);
         $cookie_string            = $cookie_string_first_part . ':' . $cookie_string_hash;
         //
         // set cookie $_COOKIE['rememberme']
@@ -332,8 +325,8 @@ class PHPLogin
     public function isAllowCurrentUserRegistration()
     {
         return (
-            !$this->isUserLoggedIn() && ALLOW_USER_REGISTRATION
-            || ALLOW_ADMIN_TO_REGISTER_NEW_USER && $_SESSION['user_access_level'] == $this->ADMIN_LEVEL
+            !$this->isUserLoggedIn() && $this->settings['ALLOW_USER_REGISTRATION']
+            || $this->settings['ALLOW_ADMIN_TO_REGISTER_NEW_USER'] && $_SESSION['user_access_level'] == $this->ADMIN_LEVEL
         );
     }
 
