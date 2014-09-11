@@ -1,21 +1,31 @@
 {
-    "name": "a-x-/php-login-advanced",
+    "name": "a-x-/php-auth",
     "description": "",
     "license": "MIT",
     "authors": [
         {
             "name": "Invntrm",
-            "email": "Invntrm@gmail.com"
+            "email": "me@invntrm.ru"
         },
         {
-            "name":"devplanete"
+            "name": "devplanete"
         },
         {
-            "name":"panique",
-            "email":"panique@web.de"
+            "name": "panique",
+            "email": "panique@web.de"
         }
     ],
     "require": {
-        "phpmailer/phpmailer": "*"
+        "a-x-/backend": "develop-dev"
+    },
+    "repositories": [
+        {
+            "type": "git",
+            "url": "git@github.com:a-x-/backend.git"
+        }
+    ],
+    "autoload": {
+        "psr-0": {
+        }
     }
 }
