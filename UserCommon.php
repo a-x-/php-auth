@@ -142,7 +142,12 @@ namespace User\Common {
     function get_session_cookie_part($partName)
     {
         list ($user_id, $token, $hash) = explode(':', $_COOKIE['rememberme']);
-        return $$partName;
+        switch($partName) {
+            case('user_id'): return $user_id;
+            case('token'): return $token;
+            case('hash'): return $hash;
+            default: throw new \Exception ('Unknown cookie part');
+        }
     }
 
     /**
