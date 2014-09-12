@@ -35,13 +35,13 @@ namespace User\Common {
         public static $USER_NAME_VERIFICATION_REGEX;
         public $settings = [];
         private $errors = []; ///< todo delete this collection
-        private $messages = []; ///< todo delete this collection
+        //        private $messages = []; ///< todo delete this collection
 
-        public function add_message($message) { $this->messages[] = $message; }
+        //        public function add_message($message) { $this->messages[] = $message; }
 
         public function add_error($error) { $this->errors[] = $error; }
 
-        public function get_messages_collection() { return $this->messages; }
+        //        public function get_messages_collection() { return $this->messages; }
 
         public function get_errors_collection() { return $this->errors; }
     }
@@ -100,7 +100,7 @@ namespace User\Common {
          */
         "COOKIE_RUNTIME"                   => 1209600,
         "COOKIE_DOMAIN"                    => "." . $_SERVER['SERVER_NAME'],
-        "COOKIE_SECRET_KEY"                => "___1gp@#32PS{+$78sfSDFrtre-*766pMJFe-92s",
+        "COOKIE_SECRET_KEY"                => "_#32PS{+$7____;%;%;___8sfSDFrtre-*766pMJFe-92s",
 
         "MAIL_VERIFY_FN"                   => function () { },
         "MAIL_RESET_PASSWORD_FN"           => function () { },
@@ -116,16 +116,8 @@ namespace User\Common {
     {
         $memo = Single::getInstance();
         return count($memo->get_errors_collection())
-            ? ['error' => 'Signin fault', 'errors' => $memo->get_errors_collection(), 'messages' => $memo->get_messages_collection()]
-            : ['response' => ['messages' => $memo->get_messages_collection()]];
-    }
-
-    /**
-     * @param $input
-     */
-    function sanitize_validate_input($input)
-    {
-
+            ? ['error' => 'Signin fault', 'errors' => $memo->get_errors_collection()]
+            : ['response' => []];
     }
 
     /*
@@ -135,11 +127,11 @@ namespace User\Common {
      *     AFTER he has successfully logged in via the login form)
      * 2.  login via cookie
      */
-    function reveal_user_session()
+    function reveal_user_cookie_session()
     {
         // login with cookie
         if (isset($_COOKIE['rememberme'])) {
-            auto_signin();
+            auto_start_cookie_session();
         }
         else {
             return false;
@@ -147,49 +139,60 @@ namespace User\Common {
         return true;
     }
 
+    function get_session_cookie_part($partName)
+    {
+        list ($user_id, $token, $hash) = explode(':', $_COOKIE['rememberme']);
+        return $$partName;
+    }
+
     /**
      * Logs in via the Cookie
      * @return bool success state of cookie login
      */
-    function auto_signin()
+    function auto_start_cookie_session()
     {
         $memo = Single::getInstance();
-        if (isset($_COOKIE['rememberme'])) {
-            // extract data from the cookie
-            list ($user_id, $token, $hash) = explode(':', $_COOKIE['rememberme']);
-            // check cookie hash validity
-            if ($hash == hash('sha256', $user_id . ':' . $token . $memo->settings['COOKIE_SECRET_KEY']) && !empty($token)) {
-                // cookie looks good, try to select corresponding user
-                // get real token from database (and all other data)
-                if (\User\Common\Model\is_user_session_valid($user_id, $token)) {
-                    // Cookie token usable only once
-                    set_cookie_session($token);
-                    return true;
-                }
-            }
+        if (!isset($_COOKIE['rememberme'])) return false;
+        // extract data from the cookie
+        list ($user_id, $token, $hash) = explode(':', $_COOKIE['rememberme']);
+        // check cookie hash validity
+        if (
+            $hash == hash('sha256', $user_id . ':' . $token . $memo->settings['COOKIE_SECRET_KEY'])
+            && !empty($token)
+            // cookie looks good, try to select corresponding user
+            // get real token from database (and all other data)
+            && \User\Common\Model\is_user_session_valid($user_id, $token)
+        ) {
+            // Cookie token usable only once. Hrm ???
+            set_cookie_session($user_id, $token);
+            return true;
+        }
+        else {
             // A cookie has been used but is not valid... we delete it
             delete_cookie_session();
             $memo->add_error('%MESSAGE_COOKIE_INVALID%');
+
+            return false;
         }
-        return false;
     }
 
     /**
      * Create all data needed for remember me cookie connection on client and server side
+     *
+     * @param        $user_id
+     * @param string $current_rememberme_token
      */
-    function set_cookie_session($current_rememberme_token = '')
+    function set_cookie_session($user_id, $current_rememberme_token = '')
     {
         $memo = Single::getInstance();
-        // Generate 64 char random string and store it in current user data
-        $random_token_string = hash('sha256', mt_rand());
-        //
-        // Update or create session ('rememberme') token hash
-        \User\Common\Model\update_session_token($current_rememberme_token, $random_token_string);
         //
         // Generate cookie string that consists of userid, random string and combined hash of both
-        $cookie_string_first_part = $_SESSION['user_id'] . ':' . $random_token_string;
-        $cookie_string_hash       = hash('sha256', $cookie_string_first_part . $memo->settings['COOKIE_SECRET_KEY']);
-        $cookie_string            = $cookie_string_first_part . ':' . $cookie_string_hash;
+        $random_token_string = hash('sha256', mt_rand()); // Generate 64 char random string and
+        $cookie_string_hash  = hash('sha256', $user_id . ':' . $random_token_string . $memo->settings['COOKIE_SECRET_KEY']);
+        $cookie_string       = $user_id . ':' . $random_token_string . ':' . $cookie_string_hash;
+        //
+        // Update session ('rememberme') token hash. Store $random_token_string in current user data
+        \User\Common\Model\update_session_token($user_id, $random_token_string, $current_rememberme_token);
         //
         // Set cookie $_COOKIE['rememberme']
         setcookie('rememberme', $cookie_string, time() + $memo->settings['COOKIE_RUNTIME'], "/", $memo->settings['COOKIE_DOMAIN']);
@@ -208,8 +211,7 @@ namespace User\Common {
             list ($user_id, $token, $hash) = explode(':', $_COOKIE['rememberme']);
             // check cookie hash validity
             if ($hash == hash('sha256', $user_id . ':' . $token . $memo->settings['COOKIE_SECRET_KEY']) && !empty($token)) {
-                // Reset rememberme token of this device
-                (new \AlxMq())->req('user_connections[user_rememberme_token=* && user_id=*]:d', 'si', [(string)$token, (int)$_SESSION['user_id']]);
+                \User\Common\Model\close_session($token, $user_id);
             }
         }
         // set the rememberme-cookie to ten years ago (3600sec * 365 days * 10).
@@ -220,21 +222,26 @@ namespace User\Common {
 
     function is_allow_signup()
     {
+        $user_id = get_session_cookie_part('user_id');
         $memo = Single::getInstance();
+        $user = \User\Common\Model\get_user_by_id($user_id);
         return (
-            !$this->is_user_signed_in() && $memo->settings['ALLOW_USER_REGISTRATION']
-            || $memo->settings['ALLOW_ADMIN_TO_REGISTER_NEW_USER'] && $_SESSION['user_access_level'] == $this->ADMIN_LEVEL
+            !is_user_signed_in($user_id) && $memo->settings['ALLOW_USER_REGISTRATION']
+            || $memo->settings['ALLOW_ADMIN_TO_REGISTER_NEW_USER'] && $user['user_access_level'] == $this->ADMIN_LEVEL
         );
     }
 
     /**
      * @todo rewrite for using model instead of PHP SESSION
      * Simply return the current state of the user's login
+     *
+     * @param $user_id
+     *
      * @return bool user's login status
      */
-    function is_user_signed_in()
+    function is_user_signed_in($user_id)
     {
-        return (!empty($_SESSION['user_email']) && $_SESSION['user_logged_in'] == 1);
+        return \User\Common\Model\is_session_exist($user_id);
     }
 
     /**
@@ -279,7 +286,7 @@ namespace User\Common\Signin {
             }
             //
             // database query, getting all the info of the selected user
-            $user_object = \User\Common\Model\get_user_by_email($user_email);
+            $user_object = \User\Common\Model\get_user_by_id($user_email, 'email');
             //
             // if this user not exists
             if (!isset($user_object['id'])) {
@@ -313,13 +320,14 @@ namespace User\Common\Signin {
     function ok($user_email, $user_rememberme, $user_password = null)
     {
         $memo        = Single::getInstance();
-        $user_object = \User\Common\Model\get_user_by_email($user_email);
+        $user_object = \User\Common\Model\get_user_by_id($user_email, 'email');
+        $user_id     = $user_object['id'];
         //
         // reset the failed login counter for that user
         \User\Common\Model\reset_signin_fails($user_object['email']);
         //
         // if user has check the "remember me" checkbox, then generate token and write cookie
-        if (isset($user_rememberme)) \User\Common\set_cookie_session();
+        if (isset($user_rememberme)) \User\Common\set_cookie_session($user_id);
         //
         // OPTIONAL: recalculate the user's password hash
         // DELETE this if-block if you like, it only exists to recalculate users's hashes when you provide a cost factor,
@@ -329,7 +337,7 @@ namespace User\Common\Signin {
             if ($memo->settings['HASH_COST_FACTOR'] && !empty($user_password)) {
                 // check if the hash needs to be rehashed
                 if (password_needs_rehash($user_object['user_password_hash'], PASSWORD_DEFAULT, ['cost' => $memo->settings['HASH_COST_FACTOR']])) {
-                    $rehashingStatus = \User\Common\Model\set_password($user_password);
+                    $rehashingStatus = \User\Common\Model\set_password($user_id, $user_password);
                     if ($rehashingStatus) {
                         // @todo writing new hash was successful. you should now output this to the user ;)
                     }
@@ -398,11 +406,13 @@ namespace User\Common\Reset {
     /**
      * @deprecated
      * @todo bring validate
+     *
      * @param $user_email
      *
      * @return bool
      */
-    function check_post ($user_email) {
+    function check_post($user_email)
+    {
         $memo       = Single::getInstance();
         $user_email = trim($user_email);
         //
@@ -513,7 +523,8 @@ namespace User\Common\Reset {
             //
             // check if exactly one row was successfully changed:
             if ($is_update_success) {
-                $memo->add_message('%MESSAGE_PASSWORD_CHANGED_SUCCESSFULLY%');
+                // Password changed successfully
+                //                $memo->add_message('%MESSAGE_PASSWORD_CHANGED_SUCCESSFULLY%');
             }
             else {
                 $memo->add_error('%MESSAGE_PASSWORD_CHANGE_FAILED%');

@@ -18,14 +18,17 @@ namespace User\Common\Model {
     /**
      * Search into database for the user data of user_email specified as parameter
      *
-     * @param $user_email
+     * @param $user_identifier
+     *
+     * @param $id_name
      *
      * @return object - user data as an object if existing user
-     * @return bool - false if user_email is not found in the database
+     * @return object - false if user_email is not found in the database
      */
-    function get_user_by_email($user_email)
+    function get_user_by_id($user_identifier, $id_name = 'id')
     {
-        return (new \AlxMq)->req('user[email=*]?*', 's', [(string)$user_email]);
+        $id_name = preg_replace('![^a-z0-9_]!i', '', $id_name);
+        return (new \AlxMq)->req("user[{$id_name}=*]?*", 's', [(string)$user_identifier]);
     }
 
     /**
@@ -155,35 +158,38 @@ namespace User\Common\Model {
 
     /**
      *
+     * @param $user_id
      * @param $user_password_new
      *
      * @return bool
      */
-    function set_password($user_password_new)
+    function set_password($user_id, $user_password_new)
     {
         //
         // crypt the new user's password with the PHP 5.5's password_hash() function
         $user_password_hash = \User\Common\get_hash_of_password($user_password_new);
         //
         // write users new hash into database
-        return \User\Common\Model\set_param($user_password_hash, 'user_password_hash');
+        return \User\Common\Model\set_param($user_id, 'user_password_hash', $user_password_hash);
     }
 
     /**
-     * @param $paramValue
+     * @param $user_id
      * @param $paramNameUntrusted
+     *
+     * @param $paramValue
      *
      * @return bool
      */
-    function set_param($paramValue, $paramNameUntrusted)
+    function set_param($user_id, $paramNameUntrusted, $paramValue)
     {
-        $memo = Single::getInstance();
+        $memo      = Single::getInstance();
         $paramName = preg_replace('![^a-z0-9_-]!i', '', $paramNameUntrusted);
-        $isSuccess = (new \AlxMq)->req("user[id=*]?{$paramName}=*", 'is', [(int)$_SESSION['user_id'], (string)$paramValue]);
+        $isSuccess = (new \AlxMq)->req("user[id=*]?{$paramName}=*", 'is', [(int)$user_id, (string)$paramValue]);
         //
         if ($isSuccess) {
-            $_SESSION[$paramName] = $paramValue;
-            $memo->add_message('%MESSAGE_USER_PARAM_CHANGED_SUCCESSFULLY%');
+            // User param changed successfully
+//            $memo->add_message('%MESSAGE_USER_PARAM_CHANGED_SUCCESSFULLY%');
             return true;
         }
         else {
@@ -195,10 +201,11 @@ namespace User\Common\Model {
     /**
      * Update or create session ('rememberme') token hash
      *
-     * @param $current_rememberme_token
+     * @param $user_id
      * @param $random_token_string
+     * @param $current_rememberme_token
      */
-    function update_session_token($current_rememberme_token, $random_token_string)
+    function update_session_token($user_id, $random_token_string, $current_rememberme_token)
     {
         $paramsString = 'user_rememberme_token=*, user_login_agent=*, user_login_ip=*, user_login_datetime=*, user_last_visit=*';
         $sigma        = 'sssss';
@@ -209,7 +216,7 @@ namespace User\Common\Model {
             (new \AlxMq())->req(
                 "user_connections[user_id=*,{$paramsString}]>",
                 "i{$sigma}",
-                array_merge([(int)$_SESSION['user_id']], $values)
+                array_merge([(int)$user_id], $values)
             );
         }
         //
@@ -218,15 +225,37 @@ namespace User\Common\Model {
             (new \AlxMq())->req(
                 "user_connections[user_id=* && user_rememberme_token=*]?,{$paramsString}",
                 "is{$sigma}",
-                array_merge([(int)$_SESSION['user_id'], $current_rememberme_token], $values)
+                array_merge([(int)$user_id, $current_rememberme_token], $values)
             );
         }
+    }
+
+    /**
+     * @param $token
+     * @param $user_id
+     */
+    function close_session($token, $user_id)
+    {
+        // Reset rememberme token of this device
+        (new \AlxMq())->req(
+            'user_connections[user_rememberme_token=* && user_id=*]:d',
+            'si', [(string)$token, (int)$user_id]
+        );
+    }
+
+    function is_session_exist ($user_id) {
+        // check this user/device
+        return !!(new \AlxMq())->req(
+            "user_connections[user_id=*, user_rememberme_token=*, user_login_agent=*, user_login_ip=*]?count",
+            'isss',
+            [(int)$user_id, \User\Common\get_session_cookie_part('token'), $_SERVER['HTTP_USER_AGENT'], $_SERVER['REMOTE_ADDR']]
+        );
     }
 
     function is_user_session_valid($user_id, $token)
     {
         return !!(new \AlxMq())->req(
-            'user[id=* && user_connections.user_rememberme_token=*]?count',
+            'user_connections[user_id=* && user_rememberme_token=*]?count',
             'is', [(int)$user_id, (string)$token]
         );
     }

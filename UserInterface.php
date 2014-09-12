@@ -20,7 +20,7 @@ namespace User {
         $_SESSION = [];
         session_destroy();
         //
-        $messages[] = '%MESSAGE_LOGGED_OUT%';
+//        $messages[] = '%MESSAGE_LOGGED_OUT%';
     }
 
 
@@ -129,8 +129,8 @@ namespace User\Signup {
                         $isVerifyMailSent = false;
                     }
                     if ($isVerifyMailSent) {
-                        // when mail has been send successfully
-                        $memo->add_message('%MESSAGE_VERIFICATION_MAIL_SENT%');
+                        // Mail has been send successfully
+//                        $memo->add_message('%MESSAGE_VERIFICATION_MAIL_SENT%');
                     }
                     else {
                         // delete this users account immediately, as we could not send a verification email
@@ -152,6 +152,8 @@ namespace User\Signup {
      *
      * @param $user_email
      * @param $user_activation_hash
+     *
+     * @return array
      */
     function check_verify($user_email, $user_activation_hash)
     {
@@ -170,7 +172,8 @@ namespace User\Signup {
             if ($memo->settings['ALLOW_AUTO_SIGNIN_AFTER_VERIFY']) {
                 \User\Common\Signin\ok($user_email, $memo->settings['ALLOW_REMEMBERME_BY_DEFAULT']);
             }
-            $memo->add_message('%MESSAGE_REGISTRATION_ACTIVATION_SUCCESSFUL%');
+            // Registration activation successful
+//            $memo->add_message('%MESSAGE_REGISTRATION_ACTIVATION_SUCCESSFUL%');
             return \User\Common\get_exit_result();
             // header('Location: ' . $memo->settings['BASE_VIEW_ENDPOINT'] . '/?message=%MESSAGE_REGISTRATION_ACTIVATION_SUCCESSFUL%');
         }
@@ -237,7 +240,7 @@ namespace User\Reset {
         }
         else {
             // database query, getting all the info of the selected user
-            $user_object = \User\Common\Model\get_user_by_email($user_email);
+            $user_object = \User\Common\Model\get_user_by_id($user_email, 'email');
             //
             // if this user exists and have the same hash in database
             if (isset($user_object['id']) && $user_object['user_password_reset_hash'] == $verification_code) {
@@ -299,8 +302,11 @@ namespace User\Edit {
      * @deprecated
      * @todo довести
      * Edit the user's email, provided in the editing form
+     *
+     * @param $user_id
+     * @param $user_email
      */
-    function email($user_email)
+    function email($user_id, $user_email)
     {
         $memo = Single::getInstance();
         // prevent database flooding
@@ -321,7 +327,7 @@ namespace User\Edit {
             else {
                 //
                 // write users new data into database
-                \User\Common\Model\set_param($user_email, 'user_email');
+                \User\Common\Model\set_param($user_id, 'user_email', $user_email);
             }
         }
     }
@@ -330,8 +336,13 @@ namespace User\Edit {
      * @deprecated
      * @todo довести
      * Edit the user's password, provided in the editing form
+     *
+     * @param $user_id
+     * @param $password_current
+     * @param $password_new_repeat
+     * @param $password_new
      */
-    function password($password_new, $password_current, $password_new_repeat)
+    function password($user_id, $password_current, $password_new_repeat, $password_new)
     {
         $memo = Single::getInstance();
         if (empty($password_new) || empty($password_new_repeat) || empty($password_current)) {
@@ -348,7 +359,7 @@ namespace User\Edit {
         }
         else {
             // database query, getting hash of currently logged in user (to check with just provided password)
-            $user_object = \User\Common\Model\get_user_by_email($_SESSION['user_email']);
+            $user_object = \User\Common\Model\get_user_by_id($user_id);
             // if this user exists
             if (!isset($user_object['user_password_hash'])) {
                 $memo->add_error('%MESSAGE_USER_DOES_NOT_EXIST%');
@@ -357,7 +368,7 @@ namespace User\Edit {
                 $memo->add_error('%MESSAGE_OLD_PASSWORD_WRONG%');
             }
             else {
-                \User\Common\Model\set_password($password_new);
+                \User\Common\Model\set_password($user_id, $password_new);
             }
 
         }

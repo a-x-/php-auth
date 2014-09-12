@@ -33,11 +33,8 @@ class User
         $this::php_password_polyfill();
         //
         // Rewrite default settings
-        $this->memo = $memo = \User\Common\Single::getInstance();
-        $this->memo->settings = array_merge(
-            $this->memo->settings,
-            $settings
-        );
+        $this->memo           = $memo = \User\Common\Single::getInstance();
+        $this->memo->settings = array_merge($this->memo->settings, $settings);
         //
         // Password-retype do not be true when allow-no-password is true
         if (!empty($memo->settings['ALLOW_NO_PASSWORD']) && !empty($memo->settings['ALLOW_NO_PASSWORD_RETYPE'])) {
@@ -46,7 +43,8 @@ class User
         }
     }
 
-    private static function php_password_polyfill(){
+    private static function php_password_polyfill()
+    {
         // check for minimum PHP version
         if (version_compare(PHP_VERSION, '5.3.7', '<')) {
             throw new \Exception('Sorry, this script does not run on a PHP version smaller than 5.3.7 !');
