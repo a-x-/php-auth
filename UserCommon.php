@@ -5,7 +5,7 @@
  */
 
 namespace User {
-//    require_once __DIR__ . "/vendor/autoload.php";
+    //    require_once __DIR__ . "/vendor/autoload.php";
     require_once __DIR__ . "/UserCommon.php";
     require_once __DIR__ . "/UserModel.php";
     require_once __DIR__ . "/UserInterface.php";
@@ -141,6 +141,7 @@ namespace User\Common {
 
     function get_session_cookie_part($partName)
     {
+        if (empty($_COOKIE['rememberme'])) return null;
         list ($user_id, $token, $hash) = explode(':', $_COOKIE['rememberme']);
         switch ($partName) {
             case('user_id'):
@@ -233,10 +234,14 @@ namespace User\Common {
     {
         $user_id = get_session_cookie_part('user_id');
         $memo    = Single::getInstance();
-        $user    = \User\Common\Model\get_user_by_id($user_id);
+        try {
+            $user = \User\Common\Model\get_user_by_id($user_id);
+        } catch (\Exception $e) {
+            $user = null;
+        }
         return (
             !is_user_signed_in($user_id) && $memo->settings['ALLOW_USER_REGISTRATION']
-            || $memo->settings['ALLOW_ADMIN_TO_REGISTER_NEW_USER'] && $user['user_access_level'] == $this->ADMIN_LEVEL
+            || $user && $user['user_access_level'] == $this->ADMIN_LEVEL && $memo->settings['ALLOW_ADMIN_TO_REGISTER_NEW_USER']
         );
     }
 

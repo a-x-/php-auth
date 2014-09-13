@@ -29,8 +29,8 @@ namespace User {
 namespace User\Signin {
 
     /**
-     * @todo move to `User` namespace
-     * Logs in with the data provided in $_POST, coming from the login form
+     * Logs in with the data provided in $_POST, coming from the login form.
+     * Testing: http -fb post 'http://testdev.brandis.club/api/account/' 'user_email=goal.inv@ya.ru'
      *
      * @param      $user_email
      * @param      $user_password

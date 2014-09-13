@@ -38,7 +38,8 @@ namespace User\Common\Model {
      */
     function is_user_exist($user_email)
     {
-        return (int)((new \AlxMq())->req('user[email=*]?id', 's', $user_email));
+        \Invntrm\_d(['email',$user_email]);
+        return (int)((new \AlxMq())->req('user[email=*]?id', 's', [(string)$user_email]));
     }
 
     function increment_signin_fails($user_email)
@@ -137,7 +138,7 @@ namespace User\Common\Model {
         // Else Add new user and retrieve new user's id
         return (new \AlxMq())->req(
             'user[email=*,user_password_hash=*,user_registration_ip=*]>',
-            'ssss',
+            'sss',
             [$user_email, $user_password_hash, $_SERVER['REMOTE_ADDR']]
         );
     }
@@ -147,7 +148,7 @@ namespace User\Common\Model {
         $user_activation_hash = sha1(uniqid(mt_rand(), true)); // generate random hash for email verification (40 char string)
         (new \AlxMq())->req(
             'user[email=*]?user_activation_hash=*',
-            'iss',
+            'ss',
             [$user_email, $user_activation_hash]
         );
         return $user_activation_hash;
@@ -242,7 +243,7 @@ namespace User\Common\Model {
 
     function is_session_exist ($user_id) {
         // check this user/device
-        return !!(new \AlxMq())->req(
+        return $user_id && !!(new \AlxMq())->req(
             "user_connections[user_id=*, user_rememberme_token=*, user_login_agent=*, user_login_ip=*]?count",
             'isss',
             [(int)$user_id, \User\Common\get_session_cookie_part('token'), $_SERVER['HTTP_USER_AGENT'], $_SERVER['REMOTE_ADDR']]
