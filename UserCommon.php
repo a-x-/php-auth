@@ -5,7 +5,7 @@
  */
 
 namespace User {
-    require_once __DIR__ . "/vendor/autoload.php";
+//    require_once __DIR__ . "/vendor/autoload.php";
     require_once __DIR__ . "/UserCommon.php";
     require_once __DIR__ . "/UserModel.php";
     require_once __DIR__ . "/UserInterface.php";
@@ -102,8 +102,8 @@ namespace User\Common {
         "COOKIE_DOMAIN"                    => "." . $_SERVER['SERVER_NAME'],
         "COOKIE_SECRET_KEY"                => "_#32PS{+$7____;%;%;___8sfSDFrtre-*766pMJFe-92s",
 
-        "MAIL_VERIFY_FN"                   => function () { },
-        "MAIL_RESET_PASSWORD_FN"           => function () { },
+        "MAIL_VERIFY_FN"                   => function ($password, $user_activation_hash, $user_email) { },
+        "MAIL_RESET_PASSWORD_FN"           => function ($verification_code, $user_email) { },
     ];
 
     /**
@@ -142,11 +142,15 @@ namespace User\Common {
     function get_session_cookie_part($partName)
     {
         list ($user_id, $token, $hash) = explode(':', $_COOKIE['rememberme']);
-        switch($partName) {
-            case('user_id'): return $user_id;
-            case('token'): return $token;
-            case('hash'): return $hash;
-            default: throw new \Exception ('Unknown cookie part');
+        switch ($partName) {
+            case('user_id'):
+                return $user_id;
+            case('token'):
+                return $token;
+            case('hash'):
+                return $hash;
+            default:
+                throw new \Exception ('Unknown cookie part');
         }
     }
 
@@ -228,8 +232,8 @@ namespace User\Common {
     function is_allow_signup()
     {
         $user_id = get_session_cookie_part('user_id');
-        $memo = Single::getInstance();
-        $user = \User\Common\Model\get_user_by_id($user_id);
+        $memo    = Single::getInstance();
+        $user    = \User\Common\Model\get_user_by_id($user_id);
         return (
             !is_user_signed_in($user_id) && $memo->settings['ALLOW_USER_REGISTRATION']
             || $memo->settings['ALLOW_ADMIN_TO_REGISTER_NEW_USER'] && $user['user_access_level'] == $this->ADMIN_LEVEL
@@ -365,17 +369,13 @@ namespace User\Common\Signup {
      */
     use User\Common\Single;
 
-    function send_mail_verify($user_email, $user_activation_hash, $mailVerifySignup)
+    function send_mail_verify($user_email, $user_activation_hash, $mail_verify_signup)
     {
         $memo     = Single::getInstance();
         $password = $_SESSION['tmp_user_password_new'];
         unset($_SESSION['tmp_user_password_new']);
         try {
-            $isMailSuccess = $mailVerifySignup([
-                'password' => $password,
-                'code'     => $user_activation_hash,
-                'email'    => $user_email
-            ]);
+            $isMailSuccess = $mail_verify_signup($password, $user_activation_hash, $user_email);
         } catch (\Exception $e) {
             \Invntrm\bugReport2('signup,verify', $e);
             $isMailSuccess = false;
@@ -389,7 +389,7 @@ namespace User\Common\Signup {
         }
     }
 
-    function add_user($user_name, $user_email, $user_password_new = null)
+    function add_user($user_email, $user_password_new = null)
     {
         $memo = Single::getInstance();
         if ($user_id = \User\Common\Model\is_user_exist($user_email))
@@ -398,7 +398,7 @@ namespace User\Common\Signup {
             $user_password_new = \Invntrm\generateStrongPassword();
         }
         $user_password_hash                = \User\Common\get_hash_of_password($user_password_new); // crypt the user's password with the PHP 5.5's password_hash() function.
-        $user_id                           = \User\Common\Model\set_data($user_name, $user_email, $user_password_hash);
+        $user_id                           = \User\Common\Model\set_data($user_email, $user_password_hash);
         $_SESSION['tmp_user_password_new'] = $user_password_new;
         return !empty($user_id) ? $user_id : false;
     }
@@ -467,18 +467,15 @@ namespace User\Common\Reset {
      * @param $user_email
      * @param $verification_code
      *
-     * @param $mailResetPassword
+     * @param $mail_reset_password
      *
      * @return bool
      */
-    function send_mail_verify($user_email, $verification_code, $mailResetPassword)
+    function send_mail_verify($user_email, $verification_code, $mail_reset_password)
     {
         $memo = Single::getInstance();
         try {
-            $isMailSuccess = $mailResetPassword([
-                'code'  => $verification_code,
-                'email' => $user_email
-            ]);
+            $isMailSuccess = $mail_reset_password($verification_code, $user_email);
         } catch (\Exception $e) {
             \Invntrm\bugReport2('signup fail', $e);
             $isMailSuccess = false;

@@ -28,7 +28,7 @@ namespace User\Common\Model {
     function get_user_by_id($user_identifier, $id_name = 'id')
     {
         $id_name = preg_replace('![^a-z0-9_]!i', '', $id_name);
-        return (new \AlxMq)->req("user[{$id_name}=*]?*", 's', [(string)$user_identifier]);
+        return (new \AlxMq())->req("user[{$id_name}=*]?*", 's', [(string)$user_identifier]);
     }
 
     /**
@@ -117,20 +117,17 @@ namespace User\Common\Model {
     /**
      * write new users data into database
      *
-     * @param $user_name
      * @param $user_email
      * @param $user_password_hash
      *
-     * @internal param $user_activation_hash
-     *
      * @return mixed
      */
-    function set_data($user_name, $user_email, $user_password_hash)
+    function set_data($user_email, $user_password_hash)
     {
         // if user exist than try update his password and retrieve his id
         if (\User\Common\Model\is_user_exist($user_email)) {
             // Update password's hashes
-            $user_id = (new \AlxMq)->req(
+            $user_id = (new \AlxMq())->req(
                 'user[email=*]?user_password_hash=*',
                 'iss',
                 [$user_email, $user_password_hash]
@@ -138,17 +135,17 @@ namespace User\Common\Model {
             return $user_id;
         }
         // Else Add new user and retrieve new user's id
-        return (new \AlxMq)->req(
-            'user[user_name=*,email=*,user_password_hash=*,user_registration_ip=*]>',
-            'sssss',
-            [$user_name, $user_email, $user_password_hash, $_SERVER['REMOTE_ADDR']]
+        return (new \AlxMq())->req(
+            'user[email=*,user_password_hash=*,user_registration_ip=*]>',
+            'ssss',
+            [$user_email, $user_password_hash, $_SERVER['REMOTE_ADDR']]
         );
     }
 
     function init_activation($user_email)
     {
         $user_activation_hash = sha1(uniqid(mt_rand(), true)); // generate random hash for email verification (40 char string)
-        (new \AlxMq)->req(
+        (new \AlxMq())->req(
             'user[email=*]?user_activation_hash=*',
             'iss',
             [$user_email, $user_activation_hash]
@@ -185,7 +182,7 @@ namespace User\Common\Model {
     {
         $memo      = Single::getInstance();
         $paramName = preg_replace('![^a-z0-9_-]!i', '', $paramNameUntrusted);
-        $isSuccess = (new \AlxMq)->req("user[id=*]?{$paramName}=*", 'is', [(int)$user_id, (string)$paramValue]);
+        $isSuccess = (new \AlxMq())->req("user[id=*]?{$paramName}=*", 'is', [(int)$user_id, (string)$paramValue]);
         //
         if ($isSuccess) {
             // User param changed successfully
