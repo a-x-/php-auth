@@ -2,6 +2,8 @@
 /**
  * @file AB-STORE / UserCommon.php
  * Created: 09.09.14 / 1:47
+ *
+ * Common (convention-private) functions
  */
 
 namespace User {
@@ -102,7 +104,7 @@ namespace User\Common {
         "COOKIE_DOMAIN"                    => "." . $_SERVER['SERVER_NAME'],
         "COOKIE_SECRET_KEY"                => "_#32PS{+$7____;%;%;___8sfSDFrtre-*766pMJFe-92s",
 
-        "MAIL_VERIFY_FN"                   => function ($password, $user_activation_hash, $user_email) { },
+        "MAIL_VERIFY_FN"                   => function ($password, $user_activation_hash, $user_email, $user_id) { },
         "MAIL_RESET_PASSWORD_FN"           => function ($verification_code, $user_email) { },
     ];
 
@@ -112,12 +114,12 @@ namespace User\Common {
      */
     $memo::$USER_NAME_VERIFICATION_REGEX = '/^[0-9 \-_' . ($memo->settings['ALLOW_UTF8_USERNAMES'] ? '[:alpha:]' : 'a-z') . ']{2,64}$/iu';
 
-    function get_exit_result()
+    function get_exit_result($response = [])
     {
         $memo = Single::getInstance();
         return count($memo->get_errors_collection())
-            ? ['error' => 'Signin fault', 'errors' => $memo->get_errors_collection()]
-            : ['response' => []];
+            ? ['error' => 'Action fault', 'errors' => $memo->get_errors_collection()]
+            : ['response' => $response];
     }
 
     /*
@@ -139,7 +141,7 @@ namespace User\Common {
         return true;
     }
 
-    function get_session_cookie_part($partName)
+    function get_session_cookie_part($partName = null)
     {
         if (empty($_COOKIE['rememberme'])) return null;
         list ($user_id, $token, $hash) = explode(':', $_COOKIE['rememberme']);
@@ -151,7 +153,7 @@ namespace User\Common {
             case('hash'):
                 return $hash;
             default:
-                throw new \Exception ('Unknown cookie part');
+                return ['user_id' => $user_id, 'token' => $token, 'hash' => $hash];
         }
     }
 
@@ -214,20 +216,27 @@ namespace User\Common {
     function delete_cookie_session()
     {
         $memo = Single::getInstance();
-        // if database connection opened and remember me cookie exist
+        // if remember me cookie exist
         if (isset($_COOKIE['rememberme'])) {
             //
             // extract data from the cookie
             list ($user_id, $token, $hash) = explode(':', $_COOKIE['rememberme']);
             // check cookie hash validity
             if ($hash == hash('sha256', $user_id . ':' . $token . $memo->settings['COOKIE_SECRET_KEY']) && !empty($token)) {
-                \User\Common\Model\close_session($token, $user_id);
+                try {
+                    \User\Common\Model\close_session($token, $user_id);
+                    // set the rememberme-cookie to ten years ago (3600sec * 365 days * 10).
+                    // that's obviously the best practice to kill a cookie via php
+                    // @see http://stackoverflow.com/a/686166/1114320
+                    setcookie('rememberme', false, time() - (3600 * 3650), '/', $memo->settings['COOKIE_DOMAIN']);
+                    return true;
+                } catch (\Exception $e) {
+                    \Invntrm\bugReport2('delete cookie,mq:close session', $e);
+                }
             }
+            \Invntrm\bugReport2('delete cookie', $_COOKIE);
+            return false;
         }
-        // set the rememberme-cookie to ten years ago (3600sec * 365 days * 10).
-        // that's obviously the best practice to kill a cookie via php
-        // @see http://stackoverflow.com/a/686166/1114320
-        setcookie('rememberme', false, time() - (3600 * 3650), '/', $memo->settings['COOKIE_DOMAIN']);
     }
 
     function is_allow_signup()
@@ -379,8 +388,9 @@ namespace User\Common\Signup {
         $memo     = Single::getInstance();
         $password = $_SESSION['tmp_user_password_new'];
         unset($_SESSION['tmp_user_password_new']);
+        $user_id = \User\Common\Model\get_user_by_id($user_email, 'email')['id'];
         try {
-            $isMailSuccess = $mail_verify_signup($password, $user_activation_hash, $user_email);
+            $isMailSuccess = $mail_verify_signup($password, $user_activation_hash, $user_email, $user_id);
         } catch (\Exception $e) {
             \Invntrm\bugReport2('signup,verify', $e);
             $isMailSuccess = false;

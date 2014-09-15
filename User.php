@@ -1,15 +1,17 @@
 <?php
-//require_once __DIR__ . '/vendor/a-x-/backend/Mq.php';
-//require_once __DIR__ . '/vendor/a-x-/backend/common.php';
-//require_once __DIR__ . '/vendor/phroute/phroute/src/Phroute/RouteCollector.php';
-//require_once __DIR__ . '/vendor/phroute/phroute/src/Phroute/Dispatcher.php';
+/**
+ *
+ */
+
 //require_once __DIR__ . "/vendor/autoload.php";
 require_once __DIR__ . "/UserCommon.php";
 require_once __DIR__ . "/UserModel.php";
 require_once __DIR__ . "/UserInterface.php";
 
 /**
- * @license http://opensource.org/licenses/MIT MIT License
+ * User singleton class.
+ *
+ * Takes settings and checks php version (load polyfill, is need).
  */
 class User
 {

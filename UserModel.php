@@ -2,6 +2,8 @@
 /**
  * @file AB-STORE / UserModel.php
  * Created: 10.09.14 / 18:38
+ *
+ * Model -- DB wrapper with specific methods.
  */
 
 namespace User {
@@ -104,11 +106,12 @@ namespace User\Common\Model {
 
     function set_active($user_email, $user_activation_hash, $isAutoActivationOnce = false)
     {
+        \Invntrm\_d(['set_active','em'=>$user_email,'h'=>$user_activation_hash]);
         if ($isAutoActivationOnce) {
             $this->set_nonactive($user_email, $user_activation_hash);
         }
         return (new \AlxMq())->req(
-            'user[email=* && user_activation_hash=*]?user_active = 1',
+            'user[email=* && user_activation_hash=*]?user_active=1',
             'ss',
             [(string)trim($user_email), (string)$user_activation_hash]
         );
@@ -137,7 +140,7 @@ namespace User\Common\Model {
         }
         // Else Add new user and retrieve new user's id
         return (new \AlxMq())->req(
-            'user[email=*,user_password_hash=*,user_registration_ip=*]>',
+            'user[email=*,user_password_hash=*,signup_ip=*,signup_date=NOW()]>',
             'sss',
             [$user_email, $user_password_hash, $_SERVER['REMOTE_ADDR']]
         );
@@ -205,8 +208,8 @@ namespace User\Common\Model {
      */
     function update_session_token($user_id, $random_token_string, $current_rememberme_token)
     {
-        $paramsString = 'user_rememberme_token=*, user_login_agent=*, user_login_ip=*, user_login_datetime=*, user_last_visit=*';
-        $sigma        = 'sssss';
+        $paramsString = 'user_rememberme_token=*, user_login_agent=*, user_login_ip=*, user_last_visit=NOW()';
+        $sigma        = 'sss';
         $values       = [$random_token_string, $_SERVER['HTTP_USER_AGENT'], $_SERVER['REMOTE_ADDR']];
         //
         // record the new token for this user/device

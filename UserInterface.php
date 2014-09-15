@@ -2,25 +2,21 @@
 /**
  * @file AB-STORE / test.php
  * Created: 28.05.14 / 23:06
+ *
+ * Front open functions.
  */
 namespace User {
-//    require_once __DIR__ . "/vendor/autoload.php";
+    //    require_once __DIR__ . "/vendor/autoload.php";
     require_once __DIR__ . "/UserCommon.php";
     require_once __DIR__ . "/UserModel.php";
     require_once __DIR__ . "/UserInterface.php";
 
     /**
-     * @deprecated
-     * @todo довести
      */
     function signout()
     {
-        \User\Common\delete_cookie_session();
-        //
-        $_SESSION = [];
-        session_destroy();
-        //
-        //        $messages[] = '%MESSAGE_LOGGED_OUT%';
+        $is_success = \User\Common\delete_cookie_session();
+        return \User\Common\get_exit_result($is_success);
     }
 
 
@@ -34,15 +30,15 @@ namespace User\Signin {
      *
      * @param      $user_email
      * @param      $user_password
-     * @param      $user_rememberme
+     * @param      $is_rememberme
      * @param bool $isAutoSignin
      *
      * @return array
      */
-    function check_post($user_email, $user_password, $user_rememberme, $isAutoSignin = false)
+    function check_post($user_email, $user_password, $is_rememberme, $isAutoSignin = false)
     {
         if (\User\Common\Signin\check_post($user_email, $user_password) || $isAutoSignin) {
-            \User\Common\Signin\ok($user_email, $user_rememberme, $user_password);
+            \User\Common\Signin\ok($user_email, $is_rememberme, $user_password);
         }
         return \User\Common\get_exit_result();
     }
@@ -67,96 +63,107 @@ namespace User\Signup {
      */
     function check_post($user_email, $optional_fields)
     {
-        $memo = Single::getInstance();
-        if (!\User\Common\is_allow_signup()) return ['error' => 'Sign up is not allowed now for you'];
-        // prevent database flooding
-        $user_email           = trim($user_email);
-        $captcha              = (isset($optional_fields['captcha'])) ? trim($optional_fields['captcha']) : '';
-        $user_password_repeat = (isset($optional_fields['user_password_repeat'])) ? trim($optional_fields['user_password_repeat']) : '';
-        $user_password_new    = (isset($optional_fields['user_password_new'])) ? trim($optional_fields['user_password_new']) : '';
-        //
-        // check provided data validity
-        if (!$memo->settings['ALLOW_NO_CAPTCHA'] && strtolower($captcha) != strtolower($_SESSION['captcha'])) {
-            $memo->add_error('%MESSAGE_CAPTCHA_WRONG%');
-        }
-        if (!$memo->settings['ALLOW_NO_PASSWORD'] && empty($user_password_new) || !$memo->settings['ALLOW_NO_PASSWORD_RETYPE'] && empty($user_password_repeat)) {
-            $memo->add_error('%MESSAGE_PASSWORD_EMPTY%');
-        }
-        if (!$memo->settings['ALLOW_NO_PASSWORD_RETYPE'] && $user_password_new !== $user_password_repeat) {
-            $memo->add_error('%MESSAGE_PASSWORD_BAD_CONFIRM%');
-        }
-        if (!$memo->settings['ALLOW_NO_PASSWORD'] && strlen($user_password_new) < 6) {
-            $memo->add_error('%MESSAGE_PASSWORD_TOO_SHORT%');
-        }
-        if (empty($user_email)) {
-            $memo->add_error('%MESSAGE_EMAIL_EMPTY%');
-        }
-        if (strlen($user_email) > 254) {
-            $memo->add_error('%MESSAGE_EMAIL_TOO_LONG%');
-        }
-        if (!filter_var($user_email, FILTER_VALIDATE_EMAIL)) {
-            $memo->add_error('%MESSAGE_EMAIL_INVALID%');
-        }
-        //
-        // Check for errors
-        if (\Invntrm\true_count($memo->get_errors_collection())) {
-            return \User\Common\get_exit_result();
-        }
-        //
-        // finally if all the above checks are ok
-        // if email already in the database
-        if (\User\Common\Model\is_user_exist($user_email)) {
-            $memo->add_error('%MESSAGE_EMAIL_ALREADY_EXISTS%');
-            return \User\Common\get_exit_result();
-        }
-        //
-        // Finally Finally. Ok user can be create
-        $user_id = \User\Common\Signup\add_user($user_email, $user_password_new);
-        if (!$user_id) {
-            $memo->add_error('%MESSAGE_REGISTRATION_FAILED%');
-            return \User\Common\get_exit_result();
-        }
-        //
-        // Finally Finally Finally. Ok, user created, let's send notify
-        $user_activation_hash = \User\Common\Model\init_activation($user_email);
-        // send a verification email
         try {
-            $isVerifyMailSent = \User\Common\Signup\send_mail_verify($user_email, $user_activation_hash, $memo->settings['MAIL_VERIFY_FN']);
+            $memo = Single::getInstance();
+            if (!\User\Common\is_allow_signup()) return ['error' => 'Sign up is not allowed now for you'];
+            if (empty($optional_fields)) $optional_fields = [];
+            // prevent database flooding
+            $user_email           = trim($user_email);
+            $captcha              = (isset($optional_fields['captcha'])) ? trim($optional_fields['captcha']) : '';
+            $user_password_repeat = (isset($optional_fields['user_password_repeat'])) ? trim($optional_fields['user_password_repeat']) : '';
+            $user_password_new    = (isset($optional_fields['user_password_new'])) ? trim($optional_fields['user_password_new']) : '';
+            //
+            // check provided data validity
+            if (!$memo->settings['ALLOW_NO_CAPTCHA'] && strtolower($captcha) != strtolower($_SESSION['captcha'])) {
+                $memo->add_error('%MESSAGE_CAPTCHA_WRONG%');
+            }
+            if (!$memo->settings['ALLOW_NO_PASSWORD'] && empty($user_password_new) || !$memo->settings['ALLOW_NO_PASSWORD_RETYPE'] && empty($user_password_repeat)) {
+                $memo->add_error('%MESSAGE_PASSWORD_EMPTY%');
+            }
+            if (!$memo->settings['ALLOW_NO_PASSWORD_RETYPE'] && $user_password_new !== $user_password_repeat) {
+                $memo->add_error('%MESSAGE_PASSWORD_BAD_CONFIRM%');
+            }
+            if (!$memo->settings['ALLOW_NO_PASSWORD'] && strlen($user_password_new) < 6) {
+                $memo->add_error('%MESSAGE_PASSWORD_TOO_SHORT%');
+            }
+            if (empty($user_email)) {
+                $memo->add_error('%MESSAGE_EMAIL_EMPTY%');
+            }
+            if (strlen($user_email) > 254) {
+                $memo->add_error('%MESSAGE_EMAIL_TOO_LONG%');
+            }
+            if (!filter_var($user_email, FILTER_VALIDATE_EMAIL)) {
+                $memo->add_error('%MESSAGE_EMAIL_INVALID%');
+            }
+            //
+            // Check for errors
+            if (\Invntrm\true_count($memo->get_errors_collection())) {
+                return \User\Common\get_exit_result();
+            }
+            //
+            // finally if all the above checks are ok
+            // if email already in the database
+            if (\User\Common\Model\is_user_exist($user_email)) {
+                $memo->add_error('%MESSAGE_EMAIL_ALREADY_EXISTS%');
+                return \User\Common\get_exit_result();
+            }
+            //
+            // Finally Finally. Ok user can be create
+            $user_id = \User\Common\Signup\add_user($user_email, $user_password_new);
+            if (!$user_id) {
+                $memo->add_error('%MESSAGE_REGISTRATION_FAILED%');
+                return \User\Common\get_exit_result();
+            }
+            //
+            // Finally Finally Finally. Ok, user created, let's send notify
+            $user_activation_hash = \User\Common\Model\init_activation($user_email);
+            // send a verification email
+            try {
+                $isVerifyMailSent = \User\Common\Signup\send_mail_verify($user_email, $user_activation_hash, $memo->settings['MAIL_VERIFY_FN']);
+            } catch (\Exception $e) {
+                \Invntrm\bugReport2('signup,mail_verify', $e);
+                $isVerifyMailSent = false;
+            }
+            if ($isVerifyMailSent) {
+                // Mail has been send successfully
+                //                        $memo->add_message('%MESSAGE_VERIFICATION_MAIL_SENT%');
+            }
+            else {
+                // delete this users account immediately, as we could not send a verification email
+                \User\Common\Model\delete($user_email);
+                $memo->add_error('%MESSAGE_VERIFICATION_MAIL_ERROR%');
+            }
+            return \User\Common\get_exit_result(["user" => ["id" => $user_id]]);
         } catch (\Exception $e) {
-            \Invntrm\bugReport2('signup,mail_verify', $e);
-            $isVerifyMailSent = false;
+            \Invntrm\bugReport2('signup/post,unknown', $e);
+            $memo->add_error('%MESSAGE_UNKNOWN_ERROR%');
+            return \User\Common\get_exit_result();
         }
-        if ($isVerifyMailSent) {
-            // Mail has been send successfully
-            //                        $memo->add_message('%MESSAGE_VERIFICATION_MAIL_SENT%');
-        }
-        else {
-            // delete this users account immediately, as we could not send a verification email
-            \User\Common\Model\delete($user_email);
-            $memo->add_error('%MESSAGE_VERIFICATION_MAIL_ERROR%');
-        }
-        return \User\Common\get_exit_result();
     }
 
     /**
      * 3.
      * checks the id/verification code combination and set the user's activation status to true (=1) in the database
      *
-     * @param $user_email
+     * @param $user_id
      * @param $user_activation_hash
      *
      * @return array
      */
-    function check_verify($user_email, $user_activation_hash)
+    function check_verify($user_id, $user_activation_hash)
     {
         $memo = Single::getInstance();
+        try {
+            $user_email = \User\Common\Model\get_user_by_id($user_id)['email'];
+        } catch (\Exception $e) {
+            \Invntrm\bugReport2('signup,verify,check', $e);
+        }
         if (empty($user_activation_hash)) {
             $memo->add_error('%MESSAGE_LINK_PARAMETER_EMPTY%');
         }
         if (empty($user_email)) {
             $memo->add_error('%MESSAGE_EMAIL_EMPTY%');
         }
-        // if database connection opened
         // try to update user with specified information
         $query_update_user = \User\Common\Model\set_active($user_email, $user_activation_hash);
         //
@@ -176,6 +183,7 @@ namespace User\Signup {
                 . \Invntrm\varDumpRet($query_update_user)
             );
             // delete this users account immediately, as we could not send a verification email
+            // uncomment in production
             \User\Common\Model\delete($user_email);
             $memo->add_error('%MESSAGE_REGISTRATION_ACTIVATION_NOT_SUCCESSFUL%');
             return \User\Common\get_exit_result();
@@ -293,6 +301,7 @@ namespace User\Edit {
     /**
      * @deprecated
      * @todo довести
+     * @todo убрать session
      * Edit the user's email, provided in the editing form
      *
      * @param $user_id
