@@ -33,7 +33,7 @@ Contains setting holder singleton (class Single).
 
 User singleton class.
 
-Takes settings and checks php version (load polyfill, is need).
+Takes settings and checks php version (load polyfill, if need).
 
 
 # TODO
