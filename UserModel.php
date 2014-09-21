@@ -30,7 +30,7 @@ namespace User\Common\Model {
     function get_user_by_id($user_identifier, $id_name = 'id')
     {
         $id_name = preg_replace('![^a-z0-9_]!i', '', $id_name);
-        return (new \AlxMq())->req("user[{$id_name}=*]?*", 's', [(string)$user_identifier]);
+        return (new \AlxMq())->req("user[{$id_name}=*]?*", $id_name === 'id' ? 'i' : 's', [(string)$user_identifier]);
     }
 
     /**
@@ -40,7 +40,7 @@ namespace User\Common\Model {
      */
     function is_user_exist($user_email)
     {
-        \Invntrm\_d(['email',$user_email]);
+        \Invntrm\_d(['email', $user_email]);
         return (int)((new \AlxMq())->req('user[email=*]?id', 's', [(string)$user_email]));
     }
 
@@ -106,7 +106,7 @@ namespace User\Common\Model {
 
     function set_active($user_email, $user_activation_hash, $isAutoActivationOnce = false)
     {
-        \Invntrm\_d(['set_active','em'=>$user_email,'h'=>$user_activation_hash]);
+        \Invntrm\_d(['set_active', 'em' => $user_email, 'h' => $user_activation_hash]);
         if ($isAutoActivationOnce) {
             $this->set_nonactive($user_email, $user_activation_hash);
         }
@@ -192,8 +192,7 @@ namespace User\Common\Model {
             // User param changed successfully
 //            $memo->add_message('%MESSAGE_USER_PARAM_CHANGED_SUCCESSFULLY%');
             return true;
-        }
-        else {
+        } else {
             $memo->add_error('%MESSAGE_USER_PARAM_CHANGE_FAILED%');
         }
         return false;
@@ -244,7 +243,8 @@ namespace User\Common\Model {
         );
     }
 
-    function is_session_exist ($user_id) {
+    function is_session_exist($user_id)
+    {
         // check this user/device
         return $user_id && !!(new \AlxMq())->req(
             "user_connections[user_id=*, user_rememberme_token=*, user_login_agent=*, user_login_ip=*]?count",

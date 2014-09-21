@@ -196,6 +196,8 @@ namespace User\Common {
      */
     function set_cookie_session($user_id, $current_rememberme_token = '')
     {
+        $user_id = (int)$user_id;
+        $current_rememberme_token = trim($current_rememberme_token);
         $memo = Single::getInstance();
         //
         // Generate cookie string that consists of userid, random string and combined hash of both
@@ -241,7 +243,7 @@ namespace User\Common {
 
     function is_allow_signup()
     {
-        $user_id = get_session_cookie_part('user_id');
+        $user_id = (int)get_session_cookie_part('user_id');
         $memo    = Single::getInstance();
         try {
             $user = \User\Common\Model\get_user_by_id($user_id);
@@ -255,7 +257,6 @@ namespace User\Common {
     }
 
     /**
-     * @todo rewrite for using model instead of PHP SESSION
      * Simply return the current state of the user's login
      *
      * @param $user_id
@@ -264,7 +265,7 @@ namespace User\Common {
      */
     function is_user_signed_in($user_id)
     {
-        return \User\Common\Model\is_session_exist($user_id);
+        return \User\Common\Model\is_session_exist((int)$user_id);
     }
 
     /**
@@ -276,6 +277,7 @@ namespace User\Common {
      */
     function get_hash_of_password($password)
     {
+        $password = trim($password);
         $memo = Single::getInstance();
         // check if we have a constant HASH_COST_FACTOR defined (in config/config.php),
         // if so: put the value into $hash_cost_factor, if not, make $hash_cost_factor = null
@@ -295,9 +297,10 @@ namespace User\Common\Signin {
 
     function check_post($user_email, $user_password)
     {
+        $user_email = trim($user_email);
+        $user_password = trim($user_password);
         $memo = Single::getInstance();
-        while (true) {
-            $user_email = trim($user_email);
+        do {
             if (empty($user_password)) {
                 $memo->add_error('%MESSAGE_PASSWORD_EMPTY%');
                 // if POST data (from login form) contains non-empty user_email and non-empty user_password
@@ -336,12 +339,15 @@ namespace User\Common\Signin {
                 break;
             }
             return true;
-        }
+        } while(false);
         return false;
     }
 
     function ok($user_email, $user_rememberme, $user_password = null)
     {
+        $user_email = trim($user_email);
+        $user_password = trim($user_password);
+        $user_rememberme = trim($user_rememberme);
         $memo        = Single::getInstance();
         $user_object = \User\Common\Model\get_user_by_id($user_email, 'email');
         $user_id     = $user_object['id'];
@@ -385,6 +391,9 @@ namespace User\Common\Signup {
 
     function send_mail_verify($user_email, $user_activation_hash, $mail_verify_signup)
     {
+        $user_email = trim($user_email);
+        $user_activation_hash = trim($user_activation_hash);
+        $mail_verify_signup = trim($mail_verify_signup);
         $memo     = Single::getInstance();
         $password = $_SESSION['tmp_user_password_new'];
         unset($_SESSION['tmp_user_password_new']);
@@ -406,6 +415,7 @@ namespace User\Common\Signup {
 
     function add_user($user_email, $user_password_new = null)
     {
+        $user_email = trim($user_email);
         $memo = Single::getInstance();
         if ($user_id = \User\Common\Model\is_user_exist($user_email))
             return $user_id;
@@ -488,6 +498,9 @@ namespace User\Common\Reset {
      */
     function send_mail_verify($user_email, $verification_code, $mail_reset_password)
     {
+        $user_email = trim($user_email);
+        $verification_code = trim($verification_code);
+        $mail_reset_password = trim($mail_reset_password);
         $memo = Single::getInstance();
         try {
             $isMailSuccess = $mail_reset_password($verification_code, $user_email);
@@ -520,6 +533,9 @@ namespace User\Common\Reset {
         $memo = Single::getInstance();
         // TODO: timestamp! Hrm... ??
         $user_email = trim($user_email);
+        $user_password_reset_verify_code = trim($user_password_reset_verify_code);
+        $user_password_new = trim($user_password_new);
+        $user_password_repeat = trim($user_password_repeat);
         //
         if (empty($user_email) || empty($user_password_reset_verify_code) || empty($user_password_new) || !$memo->settings['ALLOW_NO_PASSWORD_RETYPE'] && empty($user_password_repeat)) {
             $memo->add_error('%MESSAGE_PASSWORD_EMPTY%');

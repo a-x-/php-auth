@@ -37,7 +37,7 @@ namespace User\Signin {
      */
     function check_post($user_email, $user_password, $is_rememberme, $isAutoSignin = false)
     {
-        if (\User\Common\Signin\check_post($user_email, $user_password) || $isAutoSignin) {
+        if ($isAutoSignin || \User\Common\Signin\check_post($user_email, $user_password)) {
             \User\Common\Signin\ok($user_email, $is_rememberme, $user_password);
         }
         return \User\Common\get_exit_result();
@@ -63,7 +63,6 @@ namespace User\Signup {
      */
     function check_post($user_email, $optional_fields)
     {
-        try {
             $memo = Single::getInstance();
             if (!\User\Common\is_allow_signup()) return ['error' => 'Sign up is not allowed now for you'];
             if (empty($optional_fields)) $optional_fields = [];
@@ -134,11 +133,6 @@ namespace User\Signup {
                 $memo->add_error('%MESSAGE_VERIFICATION_MAIL_ERROR%');
             }
             return \User\Common\get_exit_result(["user" => ["id" => $user_id]]);
-        } catch (\Exception $e) {
-            \Invntrm\bugReport2('signup/post,unknown', $e);
-            $memo->add_error('%MESSAGE_UNKNOWN_ERROR%');
-            return \User\Common\get_exit_result();
-        }
     }
 
     /**
