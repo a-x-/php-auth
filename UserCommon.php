@@ -27,11 +27,17 @@ namespace User\Common {
             return $instance;
         }
 
-        protected function __construct() { }
+        protected function __construct()
+        {
+        }
 
-        private function __clone() { }
+        private function __clone()
+        {
+        }
 
-        private function __wakeup() { }
+        private function __wakeup()
+        {
+        }
 
         public static $ADMIN_LEVEL = 255;
         public static $USER_NAME_VERIFICATION_REGEX;
@@ -41,11 +47,17 @@ namespace User\Common {
 
         //        public function add_message($message) { $this->messages[] = $message; }
 
-        public function add_error($error) { $this->errors[] = $error; }
+        public function add_error($error)
+        {
+            $this->errors[] = $error;
+        }
 
         //        public function get_messages_collection() { return $this->messages; }
 
-        public function get_errors_collection() { return $this->errors; }
+        public function get_errors_collection()
+        {
+            return $this->errors;
+        }
     }
 
     $memo = Single::getInstance();
@@ -104,8 +116,10 @@ namespace User\Common {
         "COOKIE_DOMAIN"                    => "." . $_SERVER['SERVER_NAME'],
         "COOKIE_SECRET_KEY"                => "_#32PS{+$7____;%;%;___8sfSDFrtre-*766pMJFe-92s",
 
-        "MAIL_VERIFY_FN"                   => function ($password, $user_activation_hash, $user_email, $user_id) { },
-        "MAIL_RESET_PASSWORD_FN"           => function ($verification_code, $user_email) { },
+        "MAIL_VERIFY_FN"                   => function ($password, $user_activation_hash, $user_email, $user_id) {
+        },
+        "MAIL_RESET_PASSWORD_FN"           => function ($verification_code, $user_email) {
+        },
     ];
 
     /**
@@ -134,8 +148,7 @@ namespace User\Common {
         // login with cookie
         if (isset($_COOKIE['rememberme'])) {
             auto_start_cookie_session();
-        }
-        else {
+        } else {
             return false;
         }
         return true;
@@ -178,8 +191,7 @@ namespace User\Common {
             // Cookie token usable only once. Hrm ???
             set_cookie_session($user_id, $token);
             return true;
-        }
-        else {
+        } else {
             // A cookie has been used but is not valid... we delete it
             delete_cookie_session();
             $memo->add_error('%MESSAGE_COOKIE_INVALID%');
@@ -196,9 +208,9 @@ namespace User\Common {
      */
     function set_cookie_session($user_id, $current_rememberme_token = '')
     {
-        $user_id = (int)$user_id;
+        $user_id                  = (int)$user_id;
         $current_rememberme_token = trim($current_rememberme_token);
-        $memo = Single::getInstance();
+        $memo                     = Single::getInstance();
         //
         // Generate cookie string that consists of userid, random string and combined hash of both
         $random_token_string = hash('sha256', mt_rand()); // Generate 64 char random string and
@@ -278,7 +290,7 @@ namespace User\Common {
     function get_hash_of_password($password)
     {
         $password = trim($password);
-        $memo = Single::getInstance();
+        $memo     = Single::getInstance();
         // check if we have a constant HASH_COST_FACTOR defined (in config/config.php),
         // if so: put the value into $hash_cost_factor, if not, make $hash_cost_factor = null
         $hash_cost_factor = $memo->settings['HASH_COST_FACTOR'];
@@ -297,9 +309,9 @@ namespace User\Common\Signin {
 
     function check_post($user_email, $user_password)
     {
-        $user_email = trim($user_email);
+        $user_email    = trim($user_email);
         $user_password = trim($user_password);
-        $memo = Single::getInstance();
+        $memo          = Single::getInstance();
         do {
             if (empty($user_password)) {
                 $memo->add_error('%MESSAGE_PASSWORD_EMPTY%');
@@ -339,18 +351,18 @@ namespace User\Common\Signin {
                 break;
             }
             return true;
-        } while(false);
+        } while (false);
         return false;
     }
 
     function ok($user_email, $user_rememberme, $user_password = null)
     {
-        $user_email = trim($user_email);
-        $user_password = trim($user_password);
+        $user_email      = trim($user_email);
+        $user_password   = trim($user_password);
         $user_rememberme = trim($user_rememberme);
-        $memo        = Single::getInstance();
-        $user_object = \User\Common\Model\get_user_by_id($user_email, 'email');
-        $user_id     = $user_object['id'];
+        $memo            = Single::getInstance();
+        $user_object     = \User\Common\Model\get_user_by_id($user_email, 'email');
+        $user_id         = $user_object['id'];
         //
         // reset the failed login counter for that user
         \User\Common\Model\reset_signin_fails($user_object['email']);
@@ -369,8 +381,7 @@ namespace User\Common\Signin {
                     $rehashingStatus = \User\Common\Model\set_password($user_id, $user_password);
                     if ($rehashingStatus) {
                         // @todo writing new hash was successful. you should now output this to the user ;)
-                    }
-                    else {
+                    } else {
                         // @todo writing new hash was NOT successful. you should now output this to the user ;)
                     }
                 }
@@ -391,11 +402,11 @@ namespace User\Common\Signup {
 
     function send_mail_verify($user_email, $user_activation_hash, $mail_verify_signup)
     {
-        $user_email = trim($user_email);
+        $user_email           = trim($user_email);
         $user_activation_hash = trim($user_activation_hash);
-        $mail_verify_signup = trim($mail_verify_signup);
-        $memo     = Single::getInstance();
-        $password = $_SESSION['tmp_user_password_new'];
+        $mail_verify_signup   = trim($mail_verify_signup);
+        $memo                 = Single::getInstance();
+        $password             = $_SESSION['tmp_user_password_new'];
         unset($_SESSION['tmp_user_password_new']);
         $user_id = \User\Common\Model\get_user_by_id($user_email, 'email')['id'];
         try {
@@ -407,8 +418,7 @@ namespace User\Common\Signup {
         if (!$isMailSuccess) {
             $memo->add_error('%MESSAGE_VERIFICATION_MAIL_NOT_SENT%');
             return false;
-        }
-        else {
+        } else {
             return true;
         }
     }
@@ -416,7 +426,7 @@ namespace User\Common\Signup {
     function add_user($user_email, $user_password_new = null)
     {
         $user_email = trim($user_email);
-        $memo = Single::getInstance();
+        $memo       = Single::getInstance();
         if ($user_id = \User\Common\Model\is_user_exist($user_email))
             return $user_id;
         if ($memo->settings['ALLOW_NO_PASSWORD'] && !$user_password_new) {
@@ -437,49 +447,40 @@ namespace User\Common\Reset {
      * @deprecated
      * @todo bring validate
      *
-     * @param $user_email
+     * @param $user_id
      *
      * @return bool
      */
-    function check_post($user_email)
+    function check_post($user_id)
     {
         $memo       = Single::getInstance();
-        $user_email = trim($user_email);
+        $user_id = trim($user_id);
         //
-        if (empty($user_email)) {
+        if (empty($user_id)) {
             $memo->add_error('%MESSAGE_USERNAME_EMPTY%');
+            return false;
         }
-        else {
-            // generate timestamp (to see when exactly the user (or an attacker) requested the password reset mail)
-            // btw this is an integer ;)
-            $temporary_timestamp = time();
-            // generate random hash for email password reset verification (40 char string)
-            $verification_code = sha1(uniqid(mt_rand(), true));
-            //
-            // if this user exists
-            if (\User\Common\Model\is_user_exist($user_email)) {
-                //
-                // store his password_reset_hash in the DB
-                $isHashStored = \User\Common\Model\set_reset_password_request(
-                    $verification_code,
-                    $temporary_timestamp,
-                    $user_email
-                );
-                //
-                // check if exactly one row was successfully changed:
-                if ($isHashStored) {
-                    return $verification_code;
-                }
-                else {
-                    $memo->add_error('%MESSAGE_DATABASE_ERROR%');
-                }
-            }
-            else {
-                $memo->add_error('%MESSAGE_USER_DOES_NOT_EXIST%');
-            }
+        // generate timestamp (to see when exactly the user (or an attacker) requested the password reset mail)
+        // btw this is an integer ;)
+        $temporary_timestamp = time();
+        // generate random hash for email password reset verification (40 char string)
+        $verification_code = sha1(uniqid(mt_rand(), true));
+        //
+        // if this user exists
+        if (!\User\Common\Model\is_user_exist($user_id, 'id')) {
+            // was '%MESSAGE_USER_DOES_NOT_EXIST%' before, but has changed to '%MESSAGE_LOGIN_FAILED%'
+            // to prevent potential attackers showing if the user exists
+            $memo->add_error('%MESSAGE_LOGIN_FAILED%');
+            return false;
         }
-        // return false (this method only returns true when the database entry has been set successfully)
-        return false;
+        //
+        // store his password_reset_hash in the DB
+        \User\Common\Model\set_reset_password_request(
+            $verification_code,
+            $temporary_timestamp,
+            $user_id
+        );
+        return $verification_code;
     }
 
 
@@ -498,10 +499,10 @@ namespace User\Common\Reset {
      */
     function send_mail_verify($user_email, $verification_code, $mail_reset_password)
     {
-        $user_email = trim($user_email);
-        $verification_code = trim($verification_code);
+        $user_email          = trim($user_email);
+        $verification_code   = trim($verification_code);
         $mail_reset_password = trim($mail_reset_password);
-        $memo = Single::getInstance();
+        $memo                = Single::getInstance();
         try {
             $isMailSuccess = $mail_reset_password($verification_code, $user_email);
         } catch (\Exception $e) {
@@ -511,8 +512,7 @@ namespace User\Common\Reset {
         if (!$isMailSuccess) {
             $memo->add_error('%MESSAGE_VERIFICATION_MAIL_NOT_SENT%');
             return false;
-        }
-        else {
+        } else {
             return true;
         }
     }
@@ -532,24 +532,21 @@ namespace User\Common\Reset {
     {
         $memo = Single::getInstance();
         // TODO: timestamp! Hrm... ??
-        $user_email = trim($user_email);
+        $user_email                      = trim($user_email);
         $user_password_reset_verify_code = trim($user_password_reset_verify_code);
-        $user_password_new = trim($user_password_new);
-        $user_password_repeat = trim($user_password_repeat);
+        $user_password_new               = trim($user_password_new);
+        $user_password_repeat            = trim($user_password_repeat);
         //
         if (empty($user_email) || empty($user_password_reset_verify_code) || empty($user_password_new) || !$memo->settings['ALLOW_NO_PASSWORD_RETYPE'] && empty($user_password_repeat)) {
             $memo->add_error('%MESSAGE_PASSWORD_EMPTY%');
             // is the repeat password identical to password
-        }
-        else if (!$memo->settings['ALLOW_NO_PASSWORD_RETYPE'] && $user_password_new !== $user_password_repeat) {
+        } else if (!$memo->settings['ALLOW_NO_PASSWORD_RETYPE'] && $user_password_new !== $user_password_repeat) {
             $memo->add_error('%MESSAGE_PASSWORD_BAD_CONFIRM%');
             // password need to have a minimum length of 6 characters
-        }
-        else if (strlen($user_password_new) < 6) {
+        } else if (strlen($user_password_new) < 6) {
             $memo->add_error('%MESSAGE_PASSWORD_TOO_SHORT%');
             // if database connection opened
-        }
-        else {
+        } else {
             // crypt the user's password with the PHP 5.5's password_hash() function.
             $user_password_hash = \User\Common\get_hash_of_password($user_password_new);
             $is_update_success  = \User\Common\Model\reset_password($user_password_hash, $user_password_reset_verify_code, $user_email);
@@ -558,8 +555,7 @@ namespace User\Common\Reset {
             if ($is_update_success) {
                 // Password changed successfully
                 //                $memo->add_message('%MESSAGE_PASSWORD_CHANGED_SUCCESSFULLY%');
-            }
-            else {
+            } else {
                 $memo->add_error('%MESSAGE_PASSWORD_CHANGE_FAILED%');
             }
         }

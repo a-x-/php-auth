@@ -38,10 +38,10 @@ namespace User\Common\Model {
      *
      * @return int user_id
      */
-    function is_user_exist($user_email)
+    function is_user_exist($user_email, $id_name = 'email')
     {
-        \Invntrm\_d(['email', $user_email]);
-        return (int)((new \AlxMq())->req('user[email=*]?id', 's', [(string)$user_email]));
+        $id_name = preg_replace('![^a-z0-9_]!i', '', $id_name);
+        return (int)((new \AlxMq())->req("user[{$id_name}=*]?id", 's', [(string)$user_email]));
     }
 
     function increment_signin_fails($user_email)
