@@ -444,65 +444,60 @@ namespace User\Common\Reset {
     use User\Common\Single;
 
     /**
-     * @deprecated
-     * @todo bring validate
-     *
      * @param $user_id
      *
      * @return bool
      */
-    function check_post($user_id)
+    function check_post($user_email)
     {
         $memo       = Single::getInstance();
-        $user_id = trim($user_id);
+        $user_email = trim($user_email);
         //
-        if (empty($user_id)) {
+        if (empty($user_email)) {
             $memo->add_error('%MESSAGE_USERNAME_EMPTY%');
             return false;
         }
+        //
+        // if this user exists
+        if (!\User\Common\Model\is_user_exist($user_email)) {
+            // \Invntrm\_d(['reset check post email'=>$user_email]);
+            // was '%MESSAGE_USER_DOES_NOT_EXIST%' before, but has changed
+            // to prevent potential attackers showing if the user exists
+            $memo->add_error('%MESSAGE_USER_PARAM_CHANGE_FAILED%');
+            return false;
+        }
+        return true;
+    }
+
+
+    /**
+     * 2.
+     * Sends the password-reset-email.
+     *
+     * @param $user_email          string
+     * @param $verification_code   string
+     *
+     * @param $mail_reset_password callable
+     *
+     * @return bool
+     */
+    function send_mail_verify($user_email, $mail_reset_password)
+    {
+        $user_email = trim($user_email);
+        $memo       = Single::getInstance();
+//        $user_email          = \User\Common\Model\get_user_by_id($user_id)['email'];
         // generate timestamp (to see when exactly the user (or an attacker) requested the password reset mail)
         // btw this is an integer ;)
         $temporary_timestamp = time();
         // generate random hash for email password reset verification (40 char string)
         $verification_code = sha1(uniqid(mt_rand(), true));
         //
-        // if this user exists
-        if (!\User\Common\Model\is_user_exist($user_id, 'id')) {
-            // was '%MESSAGE_USER_DOES_NOT_EXIST%' before, but has changed to '%MESSAGE_LOGIN_FAILED%'
-            // to prevent potential attackers showing if the user exists
-            $memo->add_error('%MESSAGE_LOGIN_FAILED%');
-            return false;
-        }
-        //
         // store his password_reset_hash in the DB
-        \User\Common\Model\set_reset_password_request(
+        \User\Common\Model\store_password_reset_data(
             $verification_code,
             $temporary_timestamp,
-            $user_id
+            $user_email
         );
-        return $verification_code;
-    }
-
-
-    /**
-     * @deprecated
-     * @todo довести
-     * 2.
-     * Sends the password-reset-email.
-     *
-     * @param $user_email
-     * @param $verification_code
-     *
-     * @param $mail_reset_password
-     *
-     * @return bool
-     */
-    function send_mail_verify($user_email, $verification_code, $mail_reset_password)
-    {
-        $user_email          = trim($user_email);
-        $verification_code   = trim($verification_code);
-        $mail_reset_password = trim($mail_reset_password);
-        $memo                = Single::getInstance();
         try {
             $isMailSuccess = $mail_reset_password($verification_code, $user_email);
         } catch (\Exception $e) {
@@ -518,8 +513,36 @@ namespace User\Common\Reset {
     }
 
     /**
-     * @deprecated
-     * @todo довести
+     * @param $user_email
+     * @param $verification_code
+     * @param $memo
+     */
+    function check_verify($user_email, $verification_code)
+    {
+        $user_email = trim($user_email);
+        $memo = Single::getInstance();
+        // database query, getting all the info of the selected user
+        $user_object = \User\Common\Model\get_user_by_id($user_email, 'email');
+        //
+        // if this user exists and have the same hash in database
+        if (isset($user_object['id']) && $user_object['user_password_reset_hash'] === $verification_code) {
+            $timestamp_one_hour_ago = time() - 3600; // 3600 seconds are 1 hour
+            //
+            if ($user_object['user_password_reset_timestamp'] > $timestamp_one_hour_ago) {
+                return true;
+            } else {
+                $memo->add_error('%MESSAGE_RESET_LINK_HAS_EXPIRED%');
+            }
+        } else {
+            \Invntrm\_d(['reset check_verify email'=>$user_email, 'user'=>$user_object, 'code'=>$verification_code]);
+            // was '%MESSAGE_USER_DOES_NOT_EXIST%' before, but has changed
+            // to prevent potential attackers showing if the user exists
+            $memo->add_error('%MESSAGE_USER_PARAM_CHANGE_FAILED%');
+        }
+    }
+
+
+    /**
      * 4.
      * Checks and writes the new password.
      *
@@ -528,7 +551,7 @@ namespace User\Common\Reset {
      * @param $user_password_new
      * @param $user_password_repeat
      */
-    function set_password($user_email, $user_password_reset_verify_code, $user_password_new, $user_password_repeat)
+    function set_password($user_email, $user_password_reset_verify_code, $user_password_new, $user_password_repeat = null)
     {
         $memo = Single::getInstance();
         // TODO: timestamp! Hrm... ??
@@ -555,11 +578,10 @@ namespace User\Common\Reset {
             if ($is_update_success) {
                 // Password changed successfully
                 //                $memo->add_message('%MESSAGE_PASSWORD_CHANGED_SUCCESSFULLY%');
+                return true;
             } else {
                 $memo->add_error('%MESSAGE_PASSWORD_CHANGE_FAILED%');
             }
         }
     }
-
-
 }

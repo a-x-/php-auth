@@ -27,9 +27,10 @@ namespace User\Common\Model {
      * @return object - user data as an object if existing user
      * @return object - false if user_email is not found in the database
      */
-    function get_user_by_id($user_identifier, $id_name = 'id')
+    function get_user_by_id($user_identifier, $id_name = 'id', $property = '*')
     {
         $id_name = preg_replace('![^a-z0-9_]!i', '', $id_name);
+        $property = preg_replace('![^a-z0-9_]!i', '', $property);
         return (new \AlxMq())->req("user[{$id_name}=*]?*", $id_name === 'id' ? 'i' : 's', [(string)$user_identifier]);
     }
 
@@ -71,22 +72,29 @@ namespace User\Common\Model {
      */
     function reset_password($user_password_hash, $user_password_reset_hash, $user_email)
     {
+        if(!(new \AlxMq())->req(
+            'user[email = * && user_password_reset_hash = *]?count',
+            'ss', [$user_email, $user_password_reset_hash]
+        )) {
+            return false;
+        }
         //
         // write users new hash into database
-        return (new \AlxMq())->req(
+        (new \AlxMq())->req(
             'user[email = * && user_password_reset_hash = *]?user_password_hash=*,user_password_reset_hash=NULL,user_password_reset_timestamp=NULL',
             'sss', [$user_email, $user_password_reset_hash, $user_password_hash]
         );
+        return true;
     }
 
     /**
      * @param $user_password_reset_hash
      * @param $temporary_timestamp
-     * @param $user_email
+     * @param $user_id
      *
      * @return array
      */
-    function set_reset_password_request($user_password_reset_hash, $temporary_timestamp, $user_email)
+    function store_password_reset_data($user_password_reset_hash, $temporary_timestamp, $user_email)
     {
         return (new \AlxMq())->req(
             'user[email=*]?user_password_reset_hash=*, user_password_reset_timestamp=*',
@@ -106,7 +114,6 @@ namespace User\Common\Model {
 
     function set_active($user_email, $user_activation_hash, $isAutoActivationOnce = false)
     {
-        \Invntrm\_d(['set_active', 'em' => $user_email, 'h' => $user_activation_hash]);
         if ($isAutoActivationOnce) {
             $this->set_nonactive($user_email, $user_activation_hash);
         }
