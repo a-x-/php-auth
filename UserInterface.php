@@ -376,19 +376,18 @@ namespace User\Token {
         $memo = Single::getInstance();
         if (!\User\Common\Token\is_granter_correct_tmp($granter, $code))
             return \User\Common\get_exit_result();
-        $token        = (new \AlxMq())->req('token[name=*]?id, args_default', 's', [$name]);
+        $token = \User\Common\Model\get_token($name);
         $token_id     = $token['id'];
-        $args_default = json_decode($token['args_default'], true);
-        $args         = is_array($args_line_input) ? $args_line_input : json_decode($args_line_input, true);
-//        $is_exist = !!(new \AlxMq())->req('user_map_token[token_id=* && user_id=*]?count', 'ii', [(int)$token_id, (int)$user_id]);
-//        if ($is_exist)
-//            return \User\Common\get_exit_result('already exist');
-        //
-        $args_end  = array_merge($args_default, $args);
-        $args_line = json_encode($args_end, JSON_UNESCAPED_UNICODE);
+        $token_args_default = $token['args_default'];
+        $args_end     = call_user_func(function () use ($token_args_default, $args_line_input) {
+            $args_default = json_decode($token_args_default, true);
+            $args         = is_array($args_line_input) ? $args_line_input : json_decode($args_line_input, true);
+            $args_end  = array_merge($args_default, $args);
+            \Invntrm\_d(['ae'=>$args_end,'a'=>$args, 'ad'=>$args_default, 'al'=>$args_line_input]);
+            return $args_end;
+        });
         try {
-            $time ? (new \AlxMq())->req('user_map_token[token_id=*, args=*, user_id=*, time=*]>', 'isii', [(int)$token_id, $args_line, (int)$user_id, (int)$time])
-                : (new \AlxMq())->req('user_map_token[token_id=*, args=*, user_id=*]>', 'isi', [(int)$token_id, $args_line, (int)$user_id]);
+            \User\Common\Model\map_token_user($token_id, $granter, $user_id, $args_end, $time);
         } catch (\Exception $e) {
             \Invntrm\bugReport2('user,token,grant', $e);
             $memo->add_error('%MESSAGE_UNKNOWN_ERROR%');
@@ -402,7 +401,7 @@ namespace User\Token {
         if (!\User\Common\Token\is_granter_correct_tmp($granter, $code))
             return \User\Common\get_exit_result();
         try {
-            (new \AlxMq())->req('user_map_token[id=*]:d', 'i', [(int)$grant_id]);
+            \User\Common\Model\delete_token ($grant_id);
         } catch (\Exception $e) {
             \Invntrm\bugReport2('user,token,revoke', $e);
             $memo->add_error('%MESSAGE_UNKNOWN_ERROR%');
@@ -412,11 +411,7 @@ namespace User\Token {
 
     function get($user_id, $token_name = null)
     {
-        $fields = 'token.*, args, datetime, expiration';
-        $condition = 'user_map_token_extended.is_active = 1';
-        $feed = $token_name
-            ? (new \AlxMq())->req("user_map_token_extended[user_id=*&&token.name=*&&$condition]?$fields", 'is', [(int)$user_id, $token_name], \Mq_Mode::RAW_DATA)
-            : (new \AlxMq())->req("user_map_token_extended[user_id=*&&$condition]?$fields", 'i', [(int)$user_id], \Mq_Mode::RAW_DATA);
+        $feed = \User\Common\Model\get_user_tokens($token_name, $user_id);
         if (!$feed) $feed = [];
         $feed = array_map(function ($token) {
             $args_default = json_decode($token['args_default'], true);

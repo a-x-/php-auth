@@ -29,7 +29,7 @@ namespace User\Common\Model {
      */
     function get_user_by_id($user_identifier, $id_name = 'id', $property = '*')
     {
-        $id_name = preg_replace('![^a-z0-9_]!i', '', $id_name);
+        $id_name  = preg_replace('![^a-z0-9_]!i', '', $id_name);
         $property = preg_replace('![^a-z0-9_]!i', '', $property);
         return (new \AlxMq())->req("user[{$id_name}=*]?*", $id_name === 'id' ? 'i' : 's', [(string)$user_identifier]);
     }
@@ -47,20 +47,17 @@ namespace User\Common\Model {
 
     function increment_signin_fails($user_email)
     {
-        (new \AlxMq())->req('user[email=*]?user_failed_logins = user_failed_logins + 1, user_last_failed_login = *', 'si', [(string)$user_email, (int)time()]);
+        (new \AlxMq())->req('user[email=*]?user_failed_logins = user_failed_logins + 1, user_last_failed_login = *', [(string)$user_email, (int)time()]);
     }
 
     function reset_signin_fails($user_email)
     {
-        (new \AlxMq())->req(
-            'user[email=* && user_failed_logins != 0]?user_failed_logins = 0, user_last_failed_login = NULL',
-            's', [(string)$user_email]
-        );
+        (new \AlxMq())->req('user[email=* && user_failed_logins != 0]?user_failed_logins = 0, user_last_failed_login = NULL', [(string)$user_email]);
     }
 
     function delete($user_email)
     {
-        (new \AlxMq())->req('user[email=*]:d', 's', [(string)$user_email]);
+        (new \AlxMq())->req('user[email=*]:d', [(string)$user_email]);
     }
 
     /**
@@ -72,18 +69,12 @@ namespace User\Common\Model {
      */
     function reset_password($user_password_hash, $user_password_reset_hash, $user_email)
     {
-        if(!(new \AlxMq())->req(
-            'user[email = * && user_password_reset_hash = *]?count',
-            'ss', [$user_email, $user_password_reset_hash]
-        )) {
+        if (!(new \AlxMq())->req('user[email = * && user_password_reset_hash = *]?count', [$user_email, $user_password_reset_hash])) {
             return false;
         }
         //
         // write users new hash into database
-        (new \AlxMq())->req(
-            'user[email = * && user_password_reset_hash = *]?user_password_hash=*,user_password_reset_hash=NULL,user_password_reset_timestamp=NULL',
-            'sss', [$user_email, $user_password_reset_hash, $user_password_hash]
-        );
+        (new \AlxMq())->req('user[email = * && user_password_reset_hash = *]?user_password_hash=*,user_password_reset_hash=NULL,user_password_reset_timestamp=NULL', [$user_email, $user_password_reset_hash, $user_password_hash]);
         return true;
     }
 
@@ -96,19 +87,12 @@ namespace User\Common\Model {
      */
     function store_password_reset_data($user_password_reset_hash, $temporary_timestamp, $user_email)
     {
-        return (new \AlxMq())->req(
-            'user[email=*]?user_password_reset_hash=*, user_password_reset_timestamp=*',
-            'ssi', [$user_email, $user_password_reset_hash, (int)$temporary_timestamp]
-        );
+        return (new \AlxMq())->req('user[email=*]?user_password_reset_hash=*, user_password_reset_timestamp=*', [$user_email, $user_password_reset_hash, (int)$temporary_timestamp]);
     }
 
     function set_nonactive($user_email, $user_activation_hash)
     {
-        return (new \AlxMq())->req(
-            'user[email=*&&user_activation_hash=*]?user_activation_hash=NULL',
-            'ss',
-            [(string)trim($user_email), (string)$user_activation_hash]
-        );
+        return (new \AlxMq())->req('user[email=*&&user_activation_hash=*]?user_activation_hash=NULL', [(string)trim($user_email), (string)$user_activation_hash]);
     }
 
 
@@ -117,11 +101,7 @@ namespace User\Common\Model {
         if ($isAutoActivationOnce) {
             $this->set_nonactive($user_email, $user_activation_hash);
         }
-        return (new \AlxMq())->req(
-            'user[email=* && user_activation_hash=*]?user_active=1',
-            'ss',
-            [(string)trim($user_email), (string)$user_activation_hash]
-        );
+        return (new \AlxMq())->req('user[email=* && user_activation_hash=*]?user_active=1', [(string)trim($user_email), (string)$user_activation_hash]);
     }
 
 
@@ -138,29 +118,17 @@ namespace User\Common\Model {
         // if user exist than try update his password and retrieve his id
         if (\User\Common\Model\is_user_exist($user_email)) {
             // Update password's hashes
-            $user_id = (new \AlxMq())->req(
-                'user[email=*]?user_password_hash=*',
-                'iss',
-                [$user_email, $user_password_hash]
-            );
+            $user_id = (new \AlxMq())->req('user[email=*]?user_password_hash=*', [$user_email, $user_password_hash]);
             return $user_id;
         }
         // Else Add new user and retrieve new user's id
-        return (new \AlxMq())->req(
-            'user[email=*,user_password_hash=*,signup_ip=*,signup_date=NOW()]>',
-            'sss',
-            [$user_email, $user_password_hash, $_SERVER['REMOTE_ADDR']]
-        );
+        return (new \AlxMq())->req('user[email=*,user_password_hash=*,signup_ip=*,signup_date=NOW()]>', [$user_email, $user_password_hash, $_SERVER['REMOTE_ADDR']]);
     }
 
     function init_activation($user_email)
     {
         $user_activation_hash = sha1(uniqid(mt_rand(), true)); // generate random hash for email verification (40 char string)
-        (new \AlxMq())->req(
-            'user[email=*]?user_activation_hash=*',
-            'ss',
-            [$user_email, $user_activation_hash]
-        );
+        (new \AlxMq())->req('user[email=*]?user_activation_hash=*', [$user_email, $user_activation_hash]);
         return $user_activation_hash;
     }
 
@@ -244,10 +212,7 @@ namespace User\Common\Model {
     function close_session($token, $user_id)
     {
         // Reset rememberme token of this device
-        (new \AlxMq())->req(
-            'user_connections[user_rememberme_token=* && user_id=*]:d',
-            'si', [(string)$token, (int)$user_id]
-        );
+        (new \AlxMq())->req('user_connections[user_rememberme_token=* && user_id=*]:d', [(string)$token, (int)$user_id]);
     }
 
     function is_session_exist($user_id)
@@ -262,10 +227,28 @@ namespace User\Common\Model {
 
     function is_user_session_valid($user_id, $token)
     {
-        return !!(new \AlxMq())->req(
-            'user_connections[user_id=* && user_rememberme_token=*]?count',
-            'is', [(int)$user_id, (string)$token]
-        );
+        return !!(new \AlxMq())->req('user_connections[user_id=* && user_rememberme_token=*]?count', [(int)$user_id, (string)$token]);
     }
 
+    function get_user_tokens ($token_name, $user_id) {
+        $fields = 'token.*, args, datetime, expiration';
+        $condition = 'user_map_token_extended.is_active = 1';
+        return $token_name
+            ? (new \AlxMq())->req("user_map_token_extended[user_id=*&&token.name=*&&$condition]?$fields", [(int)$user_id, $token_name], \Mq_Mode::RAW_DATA)
+            : (new \AlxMq())->req("user_map_token_extended[user_id=*&&$condition]?$fields", [(int)$user_id], \Mq_Mode::RAW_DATA);
+    }
+
+    function get_token ($name) {
+        return (new \AlxMq())->req('token[name=*]?id, args_default',[$name]);
+    }
+
+    function delete_token ($grant_id) {
+        return (new \AlxMq())->req('user_map_token[id=*]:d',[(int)$grant_id]);
+    }
+
+    function map_token_user ($token_id, $granter, $user_id, $args, $time) {
+        $args_line = json_encode($args, JSON_UNESCAPED_UNICODE);
+        return $time ? (new \AlxMq())->req('user_map_token[token_id=*, args=*, user_id=*, time=*]>',[(int)$token_id, $args_line, (int)$user_id, (int)$time])
+            : (new \AlxMq())->req('user_map_token[token_id=*, args=*, user_id=*]>',[(int)$token_id, $args_line, (int)$user_id]);
+    }
 }
