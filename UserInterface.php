@@ -368,161 +368,63 @@ namespace User\Edit {
 
 }
 
-//
-//namespace User\Process {
-//    use User\Common\Single;
-//
-//    /**
-//     *  SIGN UP
-//     * check the possible REGISTER actions:
-//     * 1.  register new user
-//     * 2.  verification new user
-//     *
-//     * @param $login \PHPLogin
-//     *
-//     * @return bool
-//     */
-//    function signup($login)
-//    {
-//        \Invntrm\_d(['signup,check',$memo->REQUEST_METHOD, $memo->REQUEST_PATH, $memo->REQUEST_PATH_API, $_POST]);
-//        //
-//        // 1.
-//        // if we have such a POST request, call the check_post() method
-//        if (
-//            $memo->REQUEST_PATH_API == '/' && $memo->REQUEST_METHOD == 'post'
-//        ) {
-//            try {
-//                \User\Signup\check_post($_POST['user_name'], $_POST['user_email'], @$_POST["opt"], @$_POST['extra'], @$_POST['link']);
-//            } catch (\Exception $e) {
-//                \Invntrm\bugReport2('signup fail', $e);
-//                return false;
-//            }
-//        } else return false;
-//        return true;
-//    }
-//
-//    /**
-//     * @param $login \PHPLogin
-//     *
-//     * @return bool
-//     */
-//    function verify($login)
-//    {
-//        //
-//        // 2.
-//        // if we have such a GET request, call the check_verify() method
-//        if (
-//            $memo->REQUEST_PATH_API == '/' && $memo->REQUEST_METHOD == 'put'
-//            && isset($_REQUEST['verified'])
-//        ) {
-//            $email = \Invntrm\true_get($_REQUEST, 'email');
-//            $code = \Invntrm\true_get($_REQUEST, 'code');
-//            \User\Signup\check_verify($email, $code);
-//        } else return false;
-//        return true;
-//    }
-//
-//    /**
-//     * SIGN IN
-//     * check the possible LOGIN actions:
-//     * 3.  login via post data, which means simply logging in via the login form.
-//     *     After the user has submit his login/password successfully, his
-//     *     logged-in-status is written into his session data on the server.
-//     *     This is the typical behaviour of common login scripts.
-//     *
-//     * @param $login \PHPLogin
-//     *
-//     * @return bool
-//     */
-//    function signin($login)
-//    {
-//        //
-//        // 3.
-//        // if user just submitted a login form
-//        if (
-//            $memo->REQUEST_PATH_API == '/signin' && $memo->REQUEST_METHOD == 'post'
-//        ) {
-//            $email = \Invntrm\true_get($_POST, 'user_email');
-//            $password = \Invntrm\true_get($_POST, 'user_password');
-//            $rememberme = \Invntrm\true_get($_POST, 'user_rememberme');
-//            \User\Signin\check_post($email, $password, $rememberme);
-//        } else
-//            return false;
-//        return true;
-//    }
-//
-//    /**
-//     * @deprecated
-//     * @todo довести (сделать работающим сброс пароля)
-//     */
-//    function reset()
-//    {
-//        $memo = Single::getInstance();
-//        global $_PUT;
-//        $email = \Invntrm\true_get($_PUT, 'user_email');
-//        $password = \Invntrm\true_get($_PUT, 'user_password');
-//        $code = \Invntrm\true_get($_PUT, 'code');
-//        //
-//        // 1.3.
-//        // checking if user requested a password reset mail
-//        if (
-//            $memo->REQUEST_PATH_API == '/' && $memo->REQUEST_METHOD == 'put'
-//            && isset($_PUT['password'])
-//        ) {
-//            \User\Reset\check_post($email);
-//        } elseif (isset($_PUT["user_email"]) && isset($_PUT["code"])) {
-//            \User\Reset\check_verify($email, $code);
-//        } elseif (isset($_PUT["submit_new_password"])) {
-//            \User\Reset\writeNewPassword(
-//                $_PUT['user_email'],
-//                $_PUT['verification_code'],
-//                $_PUT['user_password_new'],
-//                $_PUT['user_password_repeat']
-//            );
-//        }
-//        return true;
-//    }
-//
-//    /**
-//     * @deprecated
-//     * @todo довести
-//     * @return bool
-//     */
-//    function edit()
-//    {
-//        $memo = Single::getInstance();
-//        global $_PUT;
-//        //
-//        // 1.1.
-//        // User want change his profile // checking for form submit from editing screen
-//        if (
-//            $memo->REQUEST_PATH_API == '/' && $memo->REQUEST_METHOD == 'put'
-//        ) {
-//            // function below uses $_SESSION['user_id'] et $_SESSION['user_email']
-//            if (!empty($_PUT['user_name'])) \User\Edit\name($_PUT['user_name']);
-//            if (!empty($_PUT['user_email'])) \User\Edit\email($_PUT['user_email']);
-//            if (!empty($_PUT['user_password'])) \User\Edit\password($_PUT['user_password']);
-//        } else return false;
-//        return true;
-//    }
-//
-//    /**
-//     * @deprecated
-//     * @todo довести
-//     *
-//     * @return bool
-//     */
-//    function signout()
-//    {
-//        $memo = Single::getInstance();
-//        //
-//        // 1.2.
-//        // if user tried to log out
-//        if (
-//            $memo->REQUEST_PATH_API == '/signin' && $memo->REQUEST_METHOD == 'delete'
-//        ) {
-//            \User\signout();
-//        } else return false;
-//        return true;
-//    }
-//}
+namespace User\Token {
+    use User\Common\Single;
+
+    function grant($user_id, $name, $args_line_input, $time, $granter, $code)
+    {
+        $memo = Single::getInstance();
+        if (!\User\Common\Token\is_granter_correct_tmp($granter, $code))
+            return \User\Common\get_exit_result();
+        $token        = (new \AlxMq())->req('token[name=*]?id, args_default', 's', [$name]);
+        $token_id     = $token['id'];
+        $args_default = json_decode($token['args_default'], true);
+        $args         = is_array($args_line_input) ? $args_line_input : json_decode($args_line_input, true);
+//        $is_exist = !!(new \AlxMq())->req('user_map_token[token_id=* && user_id=*]?count', 'ii', [(int)$token_id, (int)$user_id]);
+//        if ($is_exist)
+//            return \User\Common\get_exit_result('already exist');
+        //
+        $args_end  = array_merge($args_default, $args);
+        $args_line = json_encode($args_end, JSON_UNESCAPED_UNICODE);
+        try {
+            $time ? (new \AlxMq())->req('user_map_token[token_id=*, args=*, user_id=*, time=*]>', 'isii', [(int)$token_id, $args_line, (int)$user_id, (int)$time])
+                : (new \AlxMq())->req('user_map_token[token_id=*, args=*, user_id=*]>', 'isi', [(int)$token_id, $args_line, (int)$user_id]);
+        } catch (\Exception $e) {
+            \Invntrm\bugReport2('user,token,grant', $e);
+            $memo->add_error('%MESSAGE_UNKNOWN_ERROR%');
+        }
+        return \User\Common\get_exit_result(true);
+    }
+
+    function revoke($user_id, $grant_id, $granter, $code)
+    {
+        $memo = Single::getInstance();
+        if (!\User\Common\Token\is_granter_correct_tmp($granter, $code))
+            return \User\Common\get_exit_result();
+        try {
+            (new \AlxMq())->req('user_map_token[id=*]:d', 'i', [(int)$grant_id]);
+        } catch (\Exception $e) {
+            \Invntrm\bugReport2('user,token,revoke', $e);
+            $memo->add_error('%MESSAGE_UNKNOWN_ERROR%');
+        }
+        return \User\Common\get_exit_result(true);
+    }
+
+    function get($user_id, $token_name = null)
+    {
+        $fields = 'token.*, args, datetime, expiration';
+        $condition = 'user_map_token_extended.is_active = 1';
+        $feed = $token_name
+            ? (new \AlxMq())->req("user_map_token_extended[user_id=*&&token.name=*&&$condition]?$fields", 'is', [(int)$user_id, $token_name], \Mq_Mode::RAW_DATA)
+            : (new \AlxMq())->req("user_map_token_extended[user_id=*&&$condition]?$fields", 'i', [(int)$user_id], \Mq_Mode::RAW_DATA);
+        if (!$feed) $feed = [];
+        $feed = array_map(function ($token) {
+            $args_default = json_decode($token['args_default'], true);
+            $args = json_decode($token['args'], true);
+            $token['args'] = array_merge($args_default, $args);
+            unset($token['args_default']);
+            return $token;
+        }, $feed);
+        return \User\Common\get_exit_result($feed);
+    }
+}

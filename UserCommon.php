@@ -585,3 +585,13 @@ namespace User\Common\Reset {
         }
     }
 }
+
+namespace User\Common\Token {
+    function is_granter_correct_tmp ($granter, $code) {
+        if($granter !== 'ab-store' || $code !== 'jhgfGF42') {
+            $memo->add_error('%MESSAGE_GRANTER_UNAUTHORIZED%'." granter: $granter; code: $code");
+            return false;
+        }
+        return true;
+    }
+}
