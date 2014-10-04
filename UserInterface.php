@@ -378,6 +378,7 @@ namespace User\Token {
             return \User\Common\get_exit_result();
         $token = \User\Common\Model\get_token($name);
         $token_id     = $token['id'];
+        $token_time_default = $token['time_default'];
         $token_args_default = $token['args_default'];
         $args_end     = call_user_func(function () use ($token_args_default, $args_line_input) {
             $args_default = json_decode($token_args_default, true);
@@ -387,7 +388,7 @@ namespace User\Token {
             return $args_end;
         });
         try {
-            \User\Common\Model\map_token_user($token_id, $granter, $user_id, $args_end, $time);
+            \User\Common\Model\map_token_user($token_id, $granter, $user_id, $args_end, $time, $token_time_default);
         } catch (\Exception $e) {
             \Invntrm\bugReport2('user,token,grant', $e);
             $memo->add_error('%MESSAGE_UNKNOWN_ERROR%');

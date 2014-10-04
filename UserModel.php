@@ -230,25 +230,38 @@ namespace User\Common\Model {
         return !!(new \AlxMq())->req('user_connections[user_id=* && user_rememberme_token=*]?count', [(int)$user_id, (string)$token]);
     }
 
-    function get_user_tokens ($token_name, $user_id) {
-        $fields = 'token.*, args, datetime, expiration';
+    function get_user_tokens($token_name, $user_id)
+    {
+        $fields    = 'token.*, args, datetime, expiration';
         $condition = 'user_map_token_extended.is_active = 1';
-        return $token_name
-            ? (new \AlxMq())->req("user_map_token_extended[user_id=*&&token.name=*&&$condition]?$fields", [(int)$user_id, $token_name], \Mq_Mode::RAW_DATA)
-            : (new \AlxMq())->req("user_map_token_extended[user_id=*&&$condition]?$fields", [(int)$user_id], \Mq_Mode::RAW_DATA);
+        return array_map(
+            function ($grant) {
+                if(!$grant['expiration'] && $grant['time_default']) {
+                    $grant['expiration'] = \Invntrm\unixTimeToSqlDate(\Invntrm\sqlDateToUnixTime($grant['datetime']) + $grant['time_default']);
+                }
+                return $grant;
+            },
+            $token_name
+                ? (new \AlxMq())->req("user_map_token_extended[user_id=*&&token.name=*&&$condition]?$fields", [(int)$user_id, $token_name], null, \Mq_Mode::RAW_DATA)
+                : (new \AlxMq())->req("user_map_token_extended[user_id=*&&$condition]?$fields", [(int)$user_id], null, \Mq_Mode::RAW_DATA)
+        );
     }
 
-    function get_token ($name) {
-        return (new \AlxMq())->req('token[name=*]?id, args_default',[$name]);
+    function get_token($name)
+    {
+        return (new \AlxMq())->req('token[name=*]?id, args_default, time_default', [$name]);
     }
 
-    function delete_token ($grant_id) {
-        return (new \AlxMq())->req('user_map_token[id=*]:d',[(int)$grant_id]);
+    function delete_token($grant_id)
+    {
+        return (new \AlxMq())->req('user_map_token[id=*]:d', [(int)$grant_id]);
     }
 
-    function map_token_user ($token_id, $granter, $user_id, $args, $time) {
+    function map_token_user($token_id, $granter, $user_id, $args, $time, $time_default)
+    {
+        $time      = empty($time) ? $time_default : $time;
         $args_line = json_encode($args, JSON_UNESCAPED_UNICODE);
-        return $time ? (new \AlxMq())->req('user_map_token[token_id=*, args=*, user_id=*, time=*]>',[(int)$token_id, $args_line, (int)$user_id, (int)$time])
-            : (new \AlxMq())->req('user_map_token[token_id=*, args=*, user_id=*]>',[(int)$token_id, $args_line, (int)$user_id]);
+        return $time ? (new \AlxMq())->req('user_map_token[token_id=*, args=*, user_id=*, time=*]>', [(int)$token_id, $args_line, (int)$user_id, (int)$time])
+            : (new \AlxMq())->req('user_map_token[token_id=*, args=*, user_id=*]>', [(int)$token_id, $args_line, (int)$user_id]);
     }
 }
