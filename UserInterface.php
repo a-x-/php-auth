@@ -76,7 +76,7 @@ namespace User\Signup {
     function check_post($user_email, $optional_fields)
     {
         $memo = Single::getInstance();
-        if (!\User\Common\is_allow_signup()) return ['error' => 'Sign up is not allowed now for you'];
+        if (!\User\Common\is_allow_signup()) throw new \Invntrm\ExtendedException('method_disallowed', 'Sign up is not allowed now for you', null, 405);
         if (empty($optional_fields)) $optional_fields = [];
         // prevent database flooding
         $user_email           = trim($user_email);
@@ -129,15 +129,9 @@ namespace User\Signup {
         // Finally Finally Finally. Ok, user created, let's send notify
         $user_activation_hash = \User\Common\Model\init_activation($user_email);
         // send a verification email
-        try {
-            $isVerifyMailSent = \User\Common\Signup\send_mail_verify($user_email, $user_activation_hash, $memo->settings['MAIL_VERIFY_FN']);
-        } catch (\Exception $e) {
-            \Invntrm\bugReport2('signup,mail_verify', $e);
-            $isVerifyMailSent = false;
-        }
+        $isVerifyMailSent = \User\Common\Signup\send_mail_verify($user_email, $user_activation_hash, $memo->settings['MAIL_VERIFY_FN']);
         if ($isVerifyMailSent) {
             // Mail has been send successfully
-            //                        $memo->add_message('%MESSAGE_VERIFICATION_MAIL_SENT%');
         } else {
             // delete this users account immediately, as we could not send a verification email
             \User\Common\Model\delete($user_email);
@@ -157,12 +151,8 @@ namespace User\Signup {
      */
     function check_verify($user_id, $user_activation_hash)
     {
-        $memo = Single::getInstance();
-        try {
-            $user_email = \User\Common\Model\get_user_by_id($user_id)['email'];
-        } catch (\Exception $e) {
-            \Invntrm\bugReport2('signup,verify,check', $e);
-        }
+        $memo       = Single::getInstance();
+        $user_email = \User\Common\Model\get_user_by_id($user_id)['email'];
         if (empty($user_activation_hash)) {
             $memo->add_error('%MESSAGE_LINK_PARAMETER_EMPTY%');
         }
@@ -248,12 +238,8 @@ namespace User\Reset {
                     $password_repeat
                 );
                 if ($memo->settings['ALLOW_AUTO_SIGNIN_AFTER_VERIFY'] === true) {
-                    try {
-                        // sign in w/o addition checking
-                        \User\Signin\check_post($user_email, $password, $memo->settings['ALLOW_REMEMBERME_BY_DEFAULT'], true);
-                    } catch (\Exception $e) {
-                        \Invntrm\bugReport2('reset password,auto signin', $e);
-                    }
+                    // sign in w/o addition checking
+                    \User\Signin\check_post($user_email, $password, $memo->settings['ALLOW_REMEMBERME_BY_DEFAULT'], true);
                 }
             }
         }
@@ -376,23 +362,18 @@ namespace User\Token {
         $memo = Single::getInstance();
         if (!\User\Common\Token\is_granter_correct_tmp($granter, $code))
             return \User\Common\get_exit_result();
-        $token = \User\Common\Model\get_token($name);
-        $token_id     = $token['id'];
+        $token              = \User\Common\Model\get_token($name);
+        $token_id           = $token['id'];
         $token_time_default = $token['time_default'];
         $token_args_default = $token['args_default'];
-        $args_end     = call_user_func(function () use ($token_args_default, $args_line_input) {
+        $args_end           = call_user_func(function () use ($token_args_default, $args_line_input) {
             $args_default = json_decode($token_args_default, true);
             $args         = is_array($args_line_input) ? $args_line_input : json_decode($args_line_input, true);
-            $args_end  = array_merge($args_default, $args);
-            \Invntrm\_d(['ae'=>$args_end,'a'=>$args, 'ad'=>$args_default, 'al'=>$args_line_input]);
+            $args_end     = array_merge($args_default, $args);
+            \Invntrm\_d(['ae' => $args_end, 'a' => $args, 'ad' => $args_default, 'al' => $args_line_input]);
             return $args_end;
         });
-        try {
-            \User\Common\Model\map_token_user($token_id, $granter, $user_id, $args_end, $time, $token_time_default);
-        } catch (\Exception $e) {
-            \Invntrm\bugReport2('user,token,grant', $e);
-            $memo->add_error('%MESSAGE_UNKNOWN_ERROR%');
-        }
+        \User\Common\Model\map_token_user($token_id, $granter, $user_id, $args_end, $time, $token_time_default);
         return \User\Common\get_exit_result(true);
     }
 
@@ -401,12 +382,7 @@ namespace User\Token {
         $memo = Single::getInstance();
         if (!\User\Common\Token\is_granter_correct_tmp($granter, $code))
             return \User\Common\get_exit_result();
-        try {
-            \User\Common\Model\delete_token ($grant_id);
-        } catch (\Exception $e) {
-            \Invntrm\bugReport2('user,token,revoke', $e);
-            $memo->add_error('%MESSAGE_UNKNOWN_ERROR%');
-        }
+        \User\Common\Model\delete_token($grant_id);
         return \User\Common\get_exit_result(true);
     }
 
@@ -415,8 +391,8 @@ namespace User\Token {
         $feed = \User\Common\Model\get_user_tokens($token_name, $user_id);
         if (!$feed) $feed = [];
         $feed = array_map(function ($token) {
-            $args_default = json_decode($token['args_default'], true);
-            $args = json_decode($token['args'], true);
+            $args_default  = json_decode($token['args_default'], true);
+            $args          = json_decode($token['args'], true);
             $token['args'] = array_merge($args_default, $args);
             unset($token['args_default']);
             return $token;

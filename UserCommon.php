@@ -131,9 +131,10 @@ namespace User\Common {
     function get_exit_result($response = [])
     {
         $memo = Single::getInstance();
-        return count($memo->get_errors_collection())
-            ? ['error' => 'Action fault', 'errors' => $memo->get_errors_collection()]
-            : ['response' => $response];
+        if (count($memo->get_errors_collection()))
+            throw new \Invntrm\ExtendedException('client_error', join("\n", $memo->get_errors_collection()), 400);
+        else
+            return $response;
     }
 
     /*
@@ -184,7 +185,7 @@ namespace User\Common {
         if (
             $hash == hash('sha256', $user_id . ':' . $token . $memo->settings['COOKIE_SECRET_KEY'])
             && !empty($token)
-            // cookie looks good, try to select corresponding user
+            // cookie looks good, attempt to select corresponding user
             // get real token from database (and all other data)
             && \User\Common\Model\is_user_session_valid($user_id, $token)
         ) {
@@ -237,16 +238,12 @@ namespace User\Common {
             list ($user_id, $token, $hash) = explode(':', $_COOKIE['rememberme']);
             // check cookie hash validity
             if ($hash == hash('sha256', $user_id . ':' . $token . $memo->settings['COOKIE_SECRET_KEY']) && !empty($token)) {
-                try {
-                    \User\Common\Model\close_session($token, $user_id);
-                    // set the rememberme-cookie to ten years ago (3600sec * 365 days * 10).
-                    // that's obviously the best practice to kill a cookie via php
-                    // @see http://stackoverflow.com/a/686166/1114320
-                    setcookie('rememberme', false, time() - (3600 * 3650), '/', $memo->settings['COOKIE_DOMAIN']);
-                    return true;
-                } catch (\Exception $e) {
-                    \Invntrm\bugReport2('delete cookie,mq:close session', $e);
-                }
+                \User\Common\Model\close_session($token, $user_id);
+                // set the rememberme-cookie to ten years ago (3600sec * 365 days * 10).
+                // that's obviously the best practice to kill a cookie via php
+                // @see http://stackoverflow.com/a/686166/1114320
+                setcookie('rememberme', false, time() - (3600 * 3650), '/', $memo->settings['COOKIE_DOMAIN']);
+                return true;
             }
             \Invntrm\bugReport2('delete cookie', $_COOKIE);
             return false;
@@ -257,11 +254,7 @@ namespace User\Common {
     {
         $user_id = (int)get_session_cookie_part('user_id');
         $memo    = Single::getInstance();
-        try {
-            $user = \User\Common\Model\get_user_by_id($user_id);
-        } catch (\Exception $e) {
-            $user = null;
-        }
+        $user    = \User\Common\Model\get_user_by_id($user_id);
         return (
             !is_user_signed_in($user_id) && $memo->settings['ALLOW_USER_REGISTRATION']
             || $user && $user['user_access_level'] == $this->ADMIN_LEVEL && $memo->settings['ALLOW_ADMIN_TO_REGISTER_NEW_USER']
@@ -408,13 +401,8 @@ namespace User\Common\Signup {
         $memo                 = Single::getInstance();
         $password             = $_SESSION['tmp_user_password_new'];
         unset($_SESSION['tmp_user_password_new']);
-        $user_id = \User\Common\Model\get_user_by_id($user_email, 'email')['id'];
-        try {
-            $isMailSuccess = $mail_verify_signup($password, $user_activation_hash, $user_email, $user_id);
-        } catch (\Exception $e) {
-            \Invntrm\bugReport2('signup,verify', $e);
-            $isMailSuccess = false;
-        }
+        $user_id       = \User\Common\Model\get_user_by_id($user_email, 'email')['id'];
+        $isMailSuccess = $mail_verify_signup($password, $user_activation_hash, $user_email, $user_id);
         if (!$isMailSuccess) {
             $memo->add_error('%MESSAGE_VERIFICATION_MAIL_NOT_SENT%');
             return false;
@@ -498,12 +486,7 @@ namespace User\Common\Reset {
             $temporary_timestamp,
             $user_email
         );
-        try {
-            $isMailSuccess = $mail_reset_password($verification_code, $user_email);
-        } catch (\Exception $e) {
-            \Invntrm\bugReport2('signup fail', $e);
-            $isMailSuccess = false;
-        }
+        $isMailSuccess = $mail_reset_password($verification_code, $user_email);
         if (!$isMailSuccess) {
             $memo->add_error('%MESSAGE_VERIFICATION_MAIL_NOT_SENT%');
             return false;
@@ -520,7 +503,7 @@ namespace User\Common\Reset {
     function check_verify($user_email, $verification_code)
     {
         $user_email = trim($user_email);
-        $memo = Single::getInstance();
+        $memo       = Single::getInstance();
         // database query, getting all the info of the selected user
         $user_object = \User\Common\Model\get_user_by_id($user_email, 'email');
         //
@@ -534,7 +517,7 @@ namespace User\Common\Reset {
                 $memo->add_error('%MESSAGE_RESET_LINK_HAS_EXPIRED%');
             }
         } else {
-            \Invntrm\_d(['reset check_verify email'=>$user_email, 'user'=>$user_object, 'code'=>$verification_code]);
+            \Invntrm\_d(['reset check_verify email' => $user_email, 'user' => $user_object, 'code' => $verification_code]);
             // was '%MESSAGE_USER_DOES_NOT_EXIST%' before, but has changed
             // to prevent potential attackers showing if the user exists
             $memo->add_error('%MESSAGE_USER_PARAM_CHANGE_FAILED%');
@@ -587,9 +570,10 @@ namespace User\Common\Reset {
 }
 
 namespace User\Common\Token {
-    function is_granter_correct_tmp ($granter, $code) {
-        if($granter !== 'ab-store' || $code !== 'jhgfGF42') {
-            $memo->add_error('%MESSAGE_GRANTER_UNAUTHORIZED%'." granter: $granter; code: $code");
+    function is_granter_correct_tmp($granter, $code)
+    {
+        if ($granter !== 'ab-store' || $code !== 'jhgfGF42') {
+            $memo->add_error('%MESSAGE_GRANTER_UNAUTHORIZED%' . " granter: $granter; code: $code");
             return false;
         }
         return true;
