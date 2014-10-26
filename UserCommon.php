@@ -132,7 +132,7 @@ namespace User\Common {
     {
         $memo = Single::getInstance();
         if (count($memo->get_errors_collection()))
-            throw new \Invntrm\ExtendedException('client_error', join("\n", $memo->get_errors_collection()), 400);
+            throw new \Invntrm\ExtendedException('client_error', join("<br>\n", $memo->get_errors_collection()), 400);
         else
             return $response;
     }
@@ -397,7 +397,7 @@ namespace User\Common\Signup {
     {
         $user_email           = trim($user_email);
         $user_activation_hash = trim($user_activation_hash);
-        $mail_verify_signup   = trim($mail_verify_signup);
+        // $mail_verify_signup   = trim($mail_verify_signup); -- it is not string!!!
         $memo                 = Single::getInstance();
         $password             = $_SESSION['tmp_user_password_new'];
         unset($_SESSION['tmp_user_password_new']);

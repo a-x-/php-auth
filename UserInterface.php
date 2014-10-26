@@ -152,12 +152,12 @@ namespace User\Signup {
     function check_verify($user_id, $user_activation_hash)
     {
         $memo       = Single::getInstance();
-        $user_email = \User\Common\Model\get_user_by_id($user_id)['email'];
+        $user_email = \User\Common\Model\get_user_by_id((int)$user_id)['email'];
         if (empty($user_activation_hash)) {
             $memo->add_error('%MESSAGE_LINK_PARAMETER_EMPTY%');
         }
         if (empty($user_email)) {
-            $memo->add_error('%MESSAGE_EMAIL_EMPTY%');
+            $memo->add_error('%MESSAGE_EMAIL_EMPTY% (id:'.$user_id.')');
         }
         // try to update user with specified information
         $query_update_user = \User\Common\Model\set_active($user_email, $user_activation_hash);

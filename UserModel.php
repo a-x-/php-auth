@@ -29,9 +29,9 @@ namespace User\Common\Model {
      */
     function get_user_by_id($user_identifier, $id_name = 'id', $property = '*')
     {
-        $id_name  = preg_replace('![^a-z0-9_]!i', '', $id_name);
-        $property = preg_replace('![^a-z0-9_]!i', '', $property);
-        return (new \AlxMq())->req("user[{$id_name}=*]?*", $id_name === 'id' ? 'i' : 's', [(string)$user_identifier]);
+        $id_name  = preg_replace('!\W!', '', $id_name);
+        $property = preg_replace('!\W!', '', $property);
+        return (new \AlxMq())->req("user[{$id_name}=*]?*", $id_name === 'id' ? 'i' : 's', [$user_identifier]);
     }
 
     /**
