@@ -79,7 +79,7 @@ namespace User\Signup {
         if (!\User\Common\is_allow_signup()) throw new \Invntrm\ExtendedException('method_disallowed', 'Sign up is not allowed now for you', null, 405);
         if (empty($optional_fields)) $optional_fields = [];
         // prevent database flooding
-        $user_email           = trim($user_email);
+        $user_email           = strtolower(trim($user_email)); // email normalization 
         $captcha              = (isset($optional_fields['captcha'])) ? trim($optional_fields['captcha']) : '';
         $user_password_repeat = (isset($optional_fields['user_password_repeat'])) ? trim($optional_fields['user_password_repeat']) : '';
         $user_password_new    = (isset($optional_fields['user_password_new'])) ? trim($optional_fields['user_password_new']) : '';
@@ -116,6 +116,7 @@ namespace User\Signup {
         // if email already in the database
         if (\User\Common\Model\is_user_exist($user_email)) {
             $memo->add_error('%MESSAGE_EMAIL_ALREADY_EXISTS%');
+            \Invntrm\_d(['signup error', \User\Common\Model\is_user_exist($user_email), $user_email]);
             return \User\Common\get_exit_result();
         }
         //

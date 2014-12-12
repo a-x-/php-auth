@@ -509,7 +509,7 @@ namespace User\Common\Reset {
         //
         // if this user exists and have the same hash in database
         if (isset($user_object['id']) && $user_object['user_password_reset_hash'] === $verification_code) {
-            $timestamp_one_hour_ago = time() - 3600; // 3600 seconds are 1 hour
+            $timestamp_one_hour_ago = time() - 3600 * 72; // 3600 seconds are 1 hour
             //
             if ($user_object['user_password_reset_timestamp'] > $timestamp_one_hour_ago) {
                 return true;

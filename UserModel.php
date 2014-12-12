@@ -30,8 +30,8 @@ namespace User\Common\Model {
     function get_user_by_id($user_identifier, $id_name = 'id', $property = '*')
     {
         $id_name  = preg_replace('!\W!', '', $id_name);
-        $property = preg_replace('!\W!', '', $property);
-        return (new \AlxMq())->req("user[{$id_name}=*]?*", $id_name === 'id' ? 'i' : 's', [$user_identifier]);
+        $property = $property === '*' ? $property : preg_replace('!\W!', '', $property);
+        return (new \AlxMq())->req("user[{$id_name}=*]?".$property, $id_name === 'id' ? 'i' : 's', [$user_identifier]);
     }
 
     /**
@@ -41,7 +41,10 @@ namespace User\Common\Model {
      */
     function is_user_exist($user_email, $id_name = 'email')
     {
-        $id_name = preg_replace('![^a-z0-9_]!i', '', $id_name);
+        //\Invntrm\_d(['is_user_exist', $user_email, $id_name]);
+        $id_name = preg_replace('!\W!i', '', $id_name);
+        //\Invntrm\_d(['W-is_user_exist', $id_name]);
+        //\Invntrm\_d(['QQQ', ((new \AlxMq())->req("user[{$id_name}=*]?id", 's', [(string)$user_email]))]);
         return (int)((new \AlxMq())->req("user[{$id_name}=*]?id", 's', [(string)$user_email]));
     }
 
